@@ -59,16 +59,43 @@ const handleScanDirectory = (): void => {
 
 <template>
   <div class="app-container">
-    <header class="app-header">
-      <h1 class="app-title">项目启动器</h1>
-      <div class="header-actions">
-        <button class="header-button" @click="handleScanDirectory">扫描目录</button>
-        <button class="header-button primary" @click="handleAddProject">添加项目</button>
+    <div class="toolbar">
+      <div class="search-wrapper">
+        <svg class="search-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M7.333 12.667A5.333 5.333 0 1 0 7.333 2a5.333 5.333 0 0 0 0 10.667ZM14 14l-2.9-2.9"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <input v-model="searchQuery" type="text" class="search-input" placeholder="搜索项目..." />
       </div>
-    </header>
-
-    <div class="search-container">
-      <input v-model="searchQuery" type="text" class="search-input" placeholder="搜索项目..." />
+      <button class="toolbar-button" @click="handleScanDirectory">
+        <svg class="button-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M2.667 4.667h10.666M2.667 8h10.666M2.667 11.333h6.666M12 10l2 2-2 2"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <span>扫描目录</span>
+      </button>
+      <button class="toolbar-button primary" @click="handleAddProject">
+        <svg class="button-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M8 3.333v9.334M3.333 8h9.334"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+        <span>添加项目</span>
+      </button>
     </div>
 
     <div class="project-list-container">
@@ -97,62 +124,33 @@ const handleScanDirectory = (): void => {
   overflow: hidden;
 }
 
-.app-header {
+.toolbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--ev-c-gray-3);
-}
-
-.app-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--ev-c-text-1);
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
   gap: 12px;
-}
-
-.header-button {
-  padding: 8px 16px;
-  border: 1px solid var(--ev-c-gray-3);
-  border-radius: 6px;
-  background-color: var(--ev-c-gray-3);
-  color: var(--ev-c-text-1);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-}
-
-.header-button:hover {
-  background-color: var(--ev-c-gray-2);
-  border-color: var(--ev-c-gray-2);
-}
-
-.header-button.primary {
-  background-color: var(--ev-c-gray-2);
-  border-color: var(--ev-c-gray-2);
-}
-
-.header-button.primary:hover {
-  background-color: var(--ev-c-gray-1);
-  border-color: var(--ev-c-gray-1);
-}
-
-.search-container {
   padding: 16px 24px;
   border-bottom: 1px solid var(--ev-c-gray-3);
 }
 
+.search-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--ev-c-text-3);
+  pointer-events: none;
+}
+
 .search-input {
   width: 100%;
-  padding: 10px 14px;
+  padding: 10px 14px 10px 36px;
   border: 1px solid var(--ev-c-gray-3);
   border-radius: 6px;
   background-color: var(--ev-c-black-mute);
@@ -168,8 +166,51 @@ const handleScanDirectory = (): void => {
   background-color: var(--ev-c-black-soft);
 }
 
+.search-wrapper:focus-within .search-icon {
+  color: var(--ev-c-text-2);
+}
+
 .search-input::placeholder {
   color: var(--ev-c-text-3);
+}
+
+.toolbar-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--ev-c-gray-3);
+  border-radius: 6px;
+  background-color: var(--ev-c-gray-3);
+  color: var(--ev-c-text-1);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.toolbar-button:hover {
+  background-color: var(--ev-c-gray-2);
+  border-color: var(--ev-c-gray-2);
+}
+
+.toolbar-button.primary {
+  background-color: var(--ev-c-gray-2);
+  border-color: var(--ev-c-gray-2);
+}
+
+.toolbar-button.primary:hover {
+  background-color: var(--ev-c-gray-1);
+  border-color: var(--ev-c-gray-1);
+}
+
+.button-icon {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+  flex-shrink: 0;
 }
 
 .project-list-container {

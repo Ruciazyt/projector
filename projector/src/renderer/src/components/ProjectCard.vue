@@ -17,23 +17,25 @@ const handleOpenIDE = (ide: IDEConfig): void => {
 
 <template>
   <div class="project-card">
-    <div class="project-info">
+    <div class="project-main">
       <div class="project-name">{{ project.name }}</div>
       <div class="project-path">{{ project.path }}</div>
+    </div>
+    <div class="project-actions">
       <div v-if="project.description" class="project-description">
         {{ project.description }}
       </div>
-    </div>
-    <div class="ide-buttons">
-      <button
-        v-for="ide in ideConfigs"
-        :key="ide.id"
-        class="ide-button"
-        :title="`用 ${ide.name} 打开`"
-        @click="handleOpenIDE(ide)"
-      >
-        <span class="ide-button-text">{{ ide.name }}</span>
-      </button>
+      <div class="ide-buttons">
+        <button
+          v-for="ide in ideConfigs"
+          :key="ide.id"
+          class="ide-button"
+          :title="`用 ${ide.name} 打开`"
+          @click="handleOpenIDE(ide)"
+        >
+          <span class="ide-button-text">{{ ide.name }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -53,7 +55,7 @@ const handleOpenIDE = (ide: IDEConfig): void => {
   background-color: var(--ev-c-black-soft);
 }
 
-.project-info {
+.project-main {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -74,18 +76,24 @@ const handleOpenIDE = (ide: IDEConfig): void => {
   line-height: 1.4;
 }
 
+.project-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .project-description {
+  flex: 1;
   font-size: 14px;
   color: var(--ev-c-text-3);
   line-height: 1.4;
-  margin-top: 4px;
 }
 
 .ide-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 4px;
+  flex-shrink: 0;
 }
 
 .ide-button {
