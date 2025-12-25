@@ -1,8 +1,15 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { ProjectAPI } from './index.d'
 
 // Custom APIs for renderer
-const api = {}
+const api: ProjectAPI = {
+  getProjects: () => ipcRenderer.invoke('getProjects'),
+  addProject: (path: string) => ipcRenderer.invoke('addProject', path),
+  scanDirectory: (rootPath: string) => ipcRenderer.invoke('scanDirectory', rootPath),
+  openProject: (path: string, command: string) => ipcRenderer.invoke('openProject', path, command),
+  showOpenDialog: () => ipcRenderer.invoke('showOpenDialog')
+}
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

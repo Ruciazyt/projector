@@ -1,37 +1,19 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import ProjectCard from './components/ProjectCard.vue'
 import type { Project, IDEConfig } from './types'
 
 const searchQuery = ref('')
 
 const ideConfigs: IDEConfig[] = [
+  { id: 'cursor', name: 'Cursor', command: 'cursor' },
   { id: 'vscode', name: 'VS Code', command: 'code' },
   { id: 'webstorm', name: 'WebStorm', command: 'webstorm' },
   { id: 'pycharm', name: 'PyCharm', command: 'pycharm' },
   { id: 'sublime', name: 'Sublime', command: 'subl' }
 ]
 
-const projects = ref<Project[]>([
-  {
-    id: '1',
-    name: 'Projector',
-    path: 'D:\\personal_projects\\projector',
-    description: '项目启动器桌面应用'
-  },
-  {
-    id: '2',
-    name: 'My Web App',
-    path: 'D:\\projects\\web-app',
-    description: 'Vue 3 + TypeScript 项目'
-  },
-  {
-    id: '3',
-    name: 'Backend API',
-    path: 'C:\\dev\\backend-api',
-    description: 'Node.js 后端服务'
-  }
-])
+const projects = ref<Project[]>([])
 
 const filteredProjects = computed(() => {
   if (!searchQuery.value.trim()) {
@@ -46,15 +28,62 @@ const filteredProjects = computed(() => {
   )
 })
 
-const handleAddProject = (): void => {
-  // TODO: 实现添加项目功能
-  console.log('Add project')
+// 加载项目列表
+const loadProjects = async (): Promise<void> => {
+  try {
+    const loadedProjects = await window.api.getProjects()
+    projects.value = loadedProjects
+  } catch (error) {
+    console.error('Failed to load projects:', error)
+  }
 }
 
-const handleScanDirectory = (): void => {
-  // TODO: 实现扫描目录功能
-  console.log('Scan directory')
+// 添加项目
+const handleAddProject = async (): Promise<void> => {
+  try {
+    const selectedPath = await window.api.showOpenDialog()
+    if (!selectedPath) {
+      return
+    }
+
+    const newProject = await window.api.addProject(selectedPath)
+    if (newProject) {
+      await loadProjects()
+    } else {
+      alert('无法添加项目：该目录不包含编辑器配置文件')
+    }
+  } catch (error) {
+    console.error('Failed to add project:', error)
+    alert('添加项目失败')
+  }
 }
+
+// 扫描目录
+const handleScanDirectory = async (): Promise<void> => {
+  try {
+    const selectedPath = await window.api.showOpenDialog()
+    if (!selectedPath) {
+      return
+    }
+
+    const foundProjects = await window.api.scanDirectory(selectedPath)
+    await loadProjects()
+
+    if (foundProjects.length === 0) {
+      alert('未找到项目')
+    } else {
+      alert(`找到 ${foundProjects.length} 个项目`)
+    }
+  } catch (error) {
+    console.error('Failed to scan directory:', error)
+    alert('扫描目录失败')
+  }
+}
+
+// 组件挂载时加载项目
+onMounted(() => {
+  loadProjects()
+})
 </script>
 
 <template>
@@ -102,14 +131,15 @@ const handleScanDirectory = (): void => {
       <div v-if="filteredProjects.length === 0" class="empty-state">
         <p class="empty-text">没有找到项目</p>
       </div>
-      <div v-else class="project-list">
+      <TransitionGroup v-else name="project-list" tag="div" class="project-list">
         <ProjectCard
-          v-for="project in filteredProjects"
+          v-for="(project, index) in filteredProjects"
           :key="project.id"
           :project="project"
           :ide-configs="ideConfigs"
+          :style="{ animationDelay: `${index * 0.05}s` }"
         />
-      </div>
+      </TransitionGroup>
     </div>
   </div>
 </template>
@@ -221,10 +251,46 @@ const handleScanDirectory = (): void => {
 
 .project-list {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-width: 1200px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16px;
+  max-width: 1400px;
   margin: 0 auto;
+}
+
+.project-list-enter-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.project-list-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.project-list-enter-from {
+  opacity: 0;
+  transform: translateY(10px) scale(0.95);
+}
+
+.project-list-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+}
+
+.project-list-move {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-list-enter-active,
+  .project-list-leave-active,
+  .project-list-move {
+    transition: none;
+  }
+
+  .project-list-enter-from,
+  .project-list-leave-to {
+    transform: none;
+  }
 }
 
 .empty-state {
