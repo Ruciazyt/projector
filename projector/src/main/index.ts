@@ -1,7 +1,6 @@
 import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import icon from '../../resources/icon.png?asset'
 import { registerIpcHandlers } from './core/ipc-handlers'
 
 let mainWindow: BrowserWindow | null = null

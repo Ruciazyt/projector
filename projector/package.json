@@ -8,7 +8,8 @@
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
-    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:shared": "tsc -b tsconfig.shared.json",
+    "typecheck:node": "npm run typecheck:shared && tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "start": "electron-vite preview",
