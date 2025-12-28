@@ -1,26 +1,33 @@
 :root {
-  --ev-c-white: #ffffff;
-  --ev-c-white-soft: #f8f8f8;
-  --ev-c-white-mute: #f2f2f2;
+  /* 配色方案 */
+  --color-01: #0C0B10; /* 深色背景 */
+  --color-02: #707DA6; /* 蓝灰色 - 主要强调色 */
+  --color-03: #CCAD9D; /* 米色 - 卡片/次要元素 */
+  --color-04: #B08E4A; /* 金色 - 高亮/强调 */
+  --color-05: #863B34; /* 深红棕色 - 警告/重要 */
 
-  --ev-c-black: #1b1b1f;
-  --ev-c-black-soft: #222222;
-  --ev-c-black-mute: #282828;
+  /* 背景色 */
+  --ev-c-black: #0C0B10;
+  --ev-c-black-soft: #15141a;
+  --ev-c-black-mute: #1a1920;
 
-  --ev-c-gray-1: #515c67;
-  --ev-c-gray-2: #414853;
-  --ev-c-gray-3: #32363f;
+  /* 文本色 */
+  --ev-c-text-1: rgba(255, 255, 255, 0.92);
+  --ev-c-text-2: rgba(255, 255, 255, 0.7);
+  --ev-c-text-3: rgba(255, 255, 255, 0.5);
 
-  --ev-c-text-1: rgba(255, 255, 245, 0.86);
-  --ev-c-text-2: rgba(235, 235, 245, 0.6);
-  --ev-c-text-3: rgba(235, 235, 245, 0.38);
+  /* 灰色调（基于 Color 02 的透明版本） */
+  --ev-c-gray-1: rgba(112, 125, 166, 0.4);
+  --ev-c-gray-2: rgba(112, 125, 166, 0.25);
+  --ev-c-gray-3: rgba(112, 125, 166, 0.15);
 
+  /* 按钮样式 */
   --ev-button-alt-border: transparent;
   --ev-button-alt-text: var(--ev-c-text-1);
-  --ev-button-alt-bg: var(--ev-c-gray-3);
+  --ev-button-alt-bg: var(--color-02);
   --ev-button-alt-hover-border: transparent;
   --ev-button-alt-hover-text: var(--ev-c-text-1);
-  --ev-button-alt-hover-bg: var(--ev-c-gray-2);
+  --ev-button-alt-hover-bg: #7d8ab8;
 }
 
 :root {
@@ -29,6 +36,15 @@
   --color-background-mute: var(--ev-c-black-mute);
 
   --color-text: var(--ev-c-text-1);
+  
+  /* 主题色 */
+  --color-primary: var(--color-02);
+  --color-primary-hover: #7d8ab8;
+  --color-secondary: var(--color-03);
+  --color-accent: var(--color-04);
+  --color-warning: var(--color-05);
+  --color-card-bg: rgba(204, 173, 157, 0.08);
+  --color-card-hover: rgba(204, 173, 157, 0.12);
 }
 
 *,
@@ -64,4 +80,53 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* 亮色主题 */
+[data-theme="light"] {
+  /* 配色方案 */
+  --color-01: #F5F5F5; /* 浅色背景 */
+  --color-02: #5A6A9E; /* 蓝灰色 - 主要强调色（稍深） */
+  --color-03: #8B6F5E; /* 棕色 - 卡片/次要元素 */
+  --color-04: #8B6F3A; /* 金色 - 高亮/强调 */
+  --color-05: #A64D3D; /* 深红棕色 - 警告/重要 */
+
+  /* 背景色 */
+  --ev-c-black: #FFFFFF;
+  --ev-c-black-soft: #F5F5F5;
+  --ev-c-black-mute: #E8E8E8;
+
+  /* 文本色 */
+  --ev-c-text-1: rgba(0, 0, 0, 0.92);
+  --ev-c-text-2: rgba(0, 0, 0, 0.7);
+  --ev-c-text-3: rgba(0, 0, 0, 0.5);
+
+  /* 灰色调（基于 Color 02 的透明版本） */
+  --ev-c-gray-1: rgba(90, 106, 158, 0.4);
+  --ev-c-gray-2: rgba(90, 106, 158, 0.25);
+  --ev-c-gray-3: rgba(90, 106, 158, 0.15);
+
+  /* 按钮样式 */
+  --ev-button-alt-border: transparent;
+  --ev-button-alt-text: var(--ev-c-text-1);
+  --ev-button-alt-bg: var(--color-02);
+  --ev-button-alt-hover-border: transparent;
+  --ev-button-alt-hover-text: #ffffff;
+  --ev-button-alt-hover-bg: #4A5A8E;
+
+  /* 背景色 */
+  --color-background: var(--ev-c-black);
+  --color-background-soft: var(--ev-c-black-soft);
+  --color-background-mute: var(--ev-c-black-mute);
+
+  --color-text: var(--ev-c-text-1);
+  
+  /* 主题色 */
+  --color-primary: var(--color-02);
+  --color-primary-hover: #4A5A8E;
+  --color-secondary: var(--color-03);
+  --color-accent: var(--color-04);
+  --color-warning: var(--color-05);
+  --color-card-bg: rgba(139, 111, 94, 0.12);
+  --color-card-hover: rgba(139, 111, 94, 0.18);
 }

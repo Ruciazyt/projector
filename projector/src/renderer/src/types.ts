@@ -4,6 +4,7 @@ export interface Project {
   path: string
   description?: string
   lastOpened?: number
+  preferredIdeId?: string
 }
 
 export interface IDEConfig {

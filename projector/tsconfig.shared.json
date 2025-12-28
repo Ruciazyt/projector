@@ -1,0 +1,10 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
+  "include": ["src/shared/**/*"],
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "out-tsc/shared"
+  }
+}
+
+

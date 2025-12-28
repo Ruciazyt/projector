@@ -6,8 +6,10 @@
     "src/renderer/src/**/*.vue",
     "src/preload/*.d.ts"
   ],
+  "references": [{ "path": "./tsconfig.shared.json" }],
   "compilerOptions": {
     "composite": true,
+    "outDir": "out-tsc/web",
     "baseUrl": ".",
     "paths": {
       "@renderer/*": [
