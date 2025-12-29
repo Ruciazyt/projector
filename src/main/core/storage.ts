@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import type { Project } from '../types'
 import { detectProject } from '../projector/project-detector'
 import type { AppSettings } from './types'
+import type { SshConnectionConfig } from '../remote/types'
 
 /**
  * 获取项目数据文件路径
@@ -85,6 +86,46 @@ export function saveSettings(settings: AppSettings): void {
     writeFileSync(filePath, JSON.stringify(settings, null, 2), 'utf-8')
   } catch (error) {
     console.error('Failed to save settings:', error)
+  }
+}
+
+/**
+ * 获取 SSH 配置文件路径
+ */
+export function getSshConfigsFilePath(): string {
+  const userDataPath = app.getPath('userData')
+  return join(userDataPath, 'ssh-configs.json')
+}
+
+/**
+ * 加载 SSH 配置列表
+ */
+export function loadSshConfigs(): SshConnectionConfig[] {
+  const filePath = getSshConfigsFilePath()
+  try {
+    if (existsSync(filePath)) {
+      const data = readFileSync(filePath, 'utf-8')
+      return JSON.parse(data) as SshConnectionConfig[]
+    }
+  } catch (error) {
+    console.error('Failed to load SSH configs:', error)
+  }
+  return []
+}
+
+/**
+ * 保存 SSH 配置列表
+ */
+export function saveSshConfigs(configs: SshConnectionConfig[]): void {
+  const filePath = getSshConfigsFilePath()
+  try {
+    const dir = join(filePath, '..')
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true })
+    }
+    writeFileSync(filePath, JSON.stringify(configs, null, 2), 'utf-8')
+  } catch (error) {
+    console.error('Failed to save SSH configs:', error)
   }
 }
 

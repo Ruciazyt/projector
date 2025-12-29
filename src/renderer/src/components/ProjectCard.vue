@@ -26,7 +26,7 @@ const getPreferredIde = (): IDEConfig => {
 const handleOpen = async (): Promise<void> => {
   const ide = getPreferredIde()
   try {
-    const result = await window.api.openProject(props.project.path, ide.command)
+    const result = await window.api.openProject(props.project, ide.command)
     if (!result.success) {
       alert(`无法打开项目: ${result.error || '未知错误'}`)
       return

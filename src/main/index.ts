@@ -50,7 +50,7 @@ app.whenReady().then(() => {
 
   // 在创建窗口前注册 IPC handlers
   // IPC handlers 不依赖窗口，应该在应用启动时就准备好
-  registerIpcHandlers(null)
+  registerIpcHandlers()
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

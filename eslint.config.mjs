@@ -5,7 +5,7 @@ import eslintPluginVue from 'eslint-plugin-vue'
 import vueParser from 'vue-eslint-parser'
 
 export default defineConfig(
-  { ignores: ['**/node_modules', '**/dist', '**/out'] },
+  { ignores: ['**/node_modules', '**/dist', '**/out', '**/out-tsc'] },
   tseslint.configs.recommended,
   eslintPluginVue.configs['flat/recommended'],
   {
@@ -36,5 +36,11 @@ export default defineConfig(
       ]
     }
   },
-  eslintConfigPrettier
+  eslintConfigPrettier,
+  // Windows 下默认 CRLF；让 prettier 采用 auto，避免整库因为行尾差异而 lint 失败
+  {
+    rules: {
+      'prettier/prettier': ['warn', { endOfLine: 'auto' }]
+    }
+  }
 )

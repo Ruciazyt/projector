@@ -4,7 +4,15 @@ import ProjectCard from './components/ProjectCard.vue'
 import AddProjectFlowModal from './components/AddProjectFlowModal.vue'
 import type { Project, IDEConfig } from './types'
 import { IDE_LIST } from '../../shared/ide'
-import { FiChevronLeft, FiExternalLink, FiFolder, FiMoon, FiPlus, FiSearch, FiSun } from 'vue-icons-plus/fi'
+import {
+  FiChevronLeft,
+  FiExternalLink,
+  FiFolder,
+  FiMoon,
+  FiPlus,
+  FiSearch,
+  FiSun
+} from 'vue-icons-plus/fi'
 
 const searchQuery = ref('')
 const scanButtonRef = ref<HTMLButtonElement | null>(null)
@@ -12,7 +20,11 @@ const addButtonRef = ref<HTMLButtonElement | null>(null)
 const buttonBackgroundRef = ref<HTMLDivElement | null>(null)
 const activeButton = ref<'scan' | 'add' | null>(null)
 
-const ideConfigs: IDEConfig[] = IDE_LIST.map((x) => ({ id: x.id, name: x.name, command: x.command }))
+const ideConfigs: IDEConfig[] = IDE_LIST.map((x) => ({
+  id: x.id,
+  name: x.name,
+  command: x.command
+}))
 
 const projects = ref<Project[]>([])
 const recentSidebarCollapsed = ref(false)
@@ -89,7 +101,7 @@ const recentProjects = computed(() => {
 const handleOpenRecent = async (project: Project): Promise<void> => {
   const preferred = ideConfigs.find((x) => x.id === project.preferredIdeId) ?? ideConfigs[0]
   try {
-    const result = await window.api.openProject(project.path, preferred.command)
+    const result = await window.api.openProject(project, preferred.command)
     if (!result.success) {
       alert(`无法打开项目: ${result.error || '未知错误'}`)
       return
@@ -165,14 +177,14 @@ const moveBackgroundToButton = (buttonType: 'scan' | 'add'): void => {
   background.style.opacity = '1'
   // 确保背景元素不会拦截点击
   background.style.pointerEvents = 'none'
-  
+
   // 根据按钮类型设置背景色
   if (buttonType === 'add') {
     background.style.backgroundColor = 'var(--color-02)'
   } else {
     background.style.backgroundColor = 'rgba(112, 125, 166, 0.15)'
   }
-  
+
   activeButton.value = buttonType
 }
 
@@ -223,7 +235,12 @@ onMounted(() => {
         <FiSearch class="search-icon" />
         <input v-model="searchQuery" type="text" class="search-input" placeholder="搜索项目..." />
       </div>
-      <button class="theme-toggle" type="button" :title="theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'" @click="toggleTheme">
+      <button
+        class="theme-toggle"
+        type="button"
+        :title="theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'"
+        @click="toggleTheme"
+      >
         <FiSun v-if="theme === 'dark'" class="theme-icon" />
         <FiMoon v-else class="theme-icon" />
       </button>
@@ -260,7 +277,7 @@ onMounted(() => {
       <aside class="recent-column" :class="{ collapsed: recentSidebarCollapsed }">
         <div class="column-header">
           <Transition name="fade-slide">
-            <div class="column-title" v-show="!recentSidebarCollapsed">最近打开</div>
+            <div v-show="!recentSidebarCollapsed" class="column-title">最近打开</div>
           </Transition>
           <button
             class="collapse-toggle"
@@ -272,14 +289,12 @@ onMounted(() => {
           </button>
         </div>
 
-        <div v-if="recentProjects.length === 0" class="recent-empty">
-          暂无记录
-        </div>
+        <div v-if="recentProjects.length === 0" class="recent-empty">暂无记录</div>
 
         <div v-else class="recent-list" :class="{ collapsed: recentSidebarCollapsed }">
           <div v-for="project in recentProjects" :key="project.id" class="recent-item">
             <Transition name="fade-slide">
-              <div class="recent-name-only" v-show="!recentSidebarCollapsed" :title="project.name">
+              <div v-show="!recentSidebarCollapsed" class="recent-name-only" :title="project.name">
                 {{ project.name }}
               </div>
             </Transition>
@@ -333,12 +348,11 @@ onMounted(() => {
   gap: 12px;
   padding: 16px 24px;
   border-bottom: none;
-  /* background: linear-gradient(180deg, var(--color-01) 0%, var(--ev-c-black-soft) 100%); */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   position: relative;
 }
 
-[data-theme="light"] .toolbar {
+[data-theme='light'] .toolbar {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -389,7 +403,7 @@ onMounted(() => {
   font-size: 14px;
   font-family: inherit;
   transition: all 0.2s ease;
-  box-shadow: 
+  box-shadow:
     0 1px 2px rgba(12, 11, 16, 0.08),
     inset 0 1px 1px rgba(112, 125, 166, 0.05);
 }
@@ -397,7 +411,7 @@ onMounted(() => {
 .search-input:focus {
   outline: none;
   background-color: rgba(204, 173, 157, 0.1);
-  box-shadow: 
+  box-shadow:
     0 2px 4px rgba(12, 11, 16, 0.12),
     0 0 0 3px rgba(112, 125, 166, 0.15),
     inset 0 1px 1px rgba(112, 125, 166, 0.08);
@@ -461,14 +475,6 @@ onMounted(() => {
 }
 
 .toolbar-button:hover {
-  color: #ffffff;
-}
-
-.toolbar-button.primary {
-  color: var(--ev-c-text-1);
-}
-
-.toolbar-button.primary:hover {
   color: #ffffff;
 }
 
@@ -574,11 +580,6 @@ onMounted(() => {
 .fade-slide-leave-to {
   opacity: 0;
   transform: translateX(-8px);
-}
-
-.column-subtitle {
-  font-size: 12px;
-  color: var(--ev-c-text-3);
 }
 
 .recent-empty {
@@ -756,5 +757,4 @@ onMounted(() => {
     order: 2;
   }
 }
-
 </style>

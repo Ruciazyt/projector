@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 
-type Step = 'choose' | 'github' | 'log'
+type Step = 'choose' | 'github' | 'remote' | 'log'
 type CloneLogItem = { stream: 'stdout' | 'stderr'; line: string }
 type CloneLogEvent = { requestId: string; stream: 'stdout' | 'stderr'; line: string }
 
@@ -25,6 +25,38 @@ const cloneRequestId = ref<string | null>(null)
 const cloneLogs = ref<CloneLogItem[]>([])
 const logScrollerRef = ref<HTMLDivElement | null>(null)
 
+// 远程项目相关
+type SshConnectionConfig = {
+  id: string
+  name: string
+  host: string
+  user: string
+  port?: number
+  sshConfigName?: string
+  createdAt: number
+  lastUsedAt?: number
+}
+
+type SshConnectionInfo = {
+  host: string
+  user: string
+  port?: number
+  sshConfigName?: string
+  savedConfigId?: string
+}
+
+const sshConfigs = ref<SshConnectionConfig[]>([])
+const selectedSshConfigId = ref<string | null>(null)
+const useSavedSshConfig = ref(true)
+const remoteHost = ref('')
+const remoteUser = ref('')
+const remotePort = ref<number | undefined>(undefined)
+const remotePath = ref('')
+const sshConfigName = ref<string | null>(null)
+const saveSshConfig = ref(false)
+const sshConfigNameInput = ref('')
+const remoteAdding = ref(false)
+
 let offCloneLog: null | (() => void) = null
 
 const closeAll = (): void => {
@@ -39,6 +71,17 @@ const reset = (): void => {
   cloneRunning.value = false
   cloneRequestId.value = null
   cloneLogs.value = []
+  // 重置远程项目相关
+  selectedSshConfigId.value = null
+  useSavedSshConfig.value = true
+  remoteHost.value = ''
+  remoteUser.value = ''
+  remotePort.value = undefined
+  remotePath.value = ''
+  sshConfigName.value = null
+  saveSshConfig.value = false
+  sshConfigNameInput.value = ''
+  remoteAdding.value = false
 }
 
 const scrollLogsToBottom = (): void => {
@@ -158,6 +201,128 @@ const handleCloseLog = (): void => {
   }
 }
 
+// 远程项目相关函数
+const loadSshConfigs = async (): Promise<void> => {
+  try {
+    sshConfigs.value = await window.api.getSshConfigs()
+  } catch (error) {
+    console.error('Failed to load SSH configs:', error)
+  }
+}
+
+const handleOpenRemote = async (): Promise<void> => {
+  reset()
+  await loadSshConfigs()
+  step.value = 'remote'
+}
+
+const handleSshConfigSelect = (configId: string | null): void => {
+  selectedSshConfigId.value = configId
+  if (configId) {
+    const config = sshConfigs.value.find((c) => c.id === configId)
+    if (config) {
+      remoteHost.value = config.host
+      remoteUser.value = config.user
+      remotePort.value = config.port
+      sshConfigName.value = config.sshConfigName || null
+    }
+  }
+}
+
+const handleUseSavedSshConfigChange = (): void => {
+  if (!useSavedSshConfig.value) {
+    selectedSshConfigId.value = null
+  }
+}
+
+const handleAddRemoteProject = async (): Promise<void> => {
+  if (!remotePath.value.trim()) {
+    alert('请输入远程项目路径')
+    return
+  }
+
+  remoteAdding.value = true
+
+  try {
+    let connectionInfo: SshConnectionInfo
+
+    if (useSavedSshConfig.value && selectedSshConfigId.value) {
+      // 使用已保存的配置
+      const config = sshConfigs.value.find((c) => c.id === selectedSshConfigId.value)
+      if (!config) {
+        alert('选择的 SSH 配置不存在')
+        remoteAdding.value = false
+        return
+      }
+      connectionInfo = {
+        host: config.host,
+        user: config.user,
+        port: config.port,
+        sshConfigName: config.sshConfigName || undefined,
+        savedConfigId: config.id
+      }
+    } else {
+      // 手动输入
+      if (!remoteHost.value.trim()) {
+        alert('请输入主机地址')
+        remoteAdding.value = false
+        return
+      }
+      if (!remoteUser.value.trim()) {
+        alert('请输入用户名')
+        remoteAdding.value = false
+        return
+      }
+
+      connectionInfo = {
+        host: remoteHost.value.trim(),
+        user: remoteUser.value.trim(),
+        port: remotePort.value,
+        sshConfigName: sshConfigName.value || undefined
+      }
+
+      // 如果需要保存配置
+      if (saveSshConfig.value) {
+        if (!sshConfigNameInput.value.trim()) {
+          alert('请输入配置名称')
+          remoteAdding.value = false
+          return
+        }
+        try {
+          const savedConfig = await window.api.saveSshConfig({
+            name: sshConfigNameInput.value.trim(),
+            host: connectionInfo.host,
+            user: connectionInfo.user,
+            port: connectionInfo.port,
+            sshConfigName: connectionInfo.sshConfigName
+          })
+          connectionInfo.savedConfigId = savedConfig.id
+        } catch (error) {
+          console.error('Failed to save SSH config:', error)
+          // 继续添加项目，即使保存配置失败
+        }
+      }
+    }
+
+    // 添加远程项目
+    const result = await window.api.addRemoteProject(connectionInfo, remotePath.value.trim())
+
+    if ('success' in result && !result.success) {
+      alert(result.error || '添加远程项目失败')
+      remoteAdding.value = false
+      return
+    }
+
+    emit('added')
+    closeAll()
+  } catch (error) {
+    console.error('Failed to add remote project:', error)
+    alert(`添加远程项目失败: ${error instanceof Error ? error.message : '未知错误'}`)
+  } finally {
+    remoteAdding.value = false
+  }
+}
+
 watch(
   () => props.open,
   (open) => {
@@ -165,6 +330,8 @@ watch(
       reset()
       // 订阅日志：仅在流程打开时订阅
       ensureCloneLogSubscribed()
+      // 加载 SSH 配置
+      loadSshConfigs()
     } else {
       reset()
     }
@@ -183,12 +350,13 @@ onBeforeUnmount(() => {
   <Transition name="modal">
     <div v-if="open && step === 'choose'" class="modal-overlay" @click.self="closeAll">
       <Transition name="modal-content">
-        <div class="modal">
+        <div v-if="open && step === 'choose'" class="modal">
       <div class="modal-title">添加项目</div>
       <div class="modal-subtitle">请选择添加方式</div>
       <div class="modal-actions">
         <button class="modal-btn" type="button" @click="handleAddLocalProject">选择本地目录</button>
-        <button class="modal-btn primary" type="button" @click="handleOpenGithub">从 GitHub 添加</button>
+        <button class="modal-btn" type="button" @click="handleOpenGithub">从 GitHub 添加</button>
+        <button class="modal-btn primary" type="button" @click="handleOpenRemote">远程服务器</button>
       </div>
         </div>
       </Transition>
@@ -199,7 +367,7 @@ onBeforeUnmount(() => {
   <Transition name="modal">
     <div v-if="open && step === 'github'" class="modal-overlay" @click.self="closeAll">
       <Transition name="modal-content">
-        <div class="modal modal-wide">
+        <div v-if="open && step === 'github'" class="modal modal-wide">
       <div class="modal-title">从 GitHub 添加</div>
       <div class="modal-subtitle">仅支持公开仓库 HTTPS 地址</div>
 
@@ -227,11 +395,122 @@ onBeforeUnmount(() => {
     </div>
   </Transition>
 
+  <!-- 远程服务器添加 -->
+  <Transition name="modal">
+    <div v-if="open && step === 'remote'" class="modal-overlay" @click.self="closeAll">
+      <Transition name="modal-content">
+        <div v-if="open && step === 'remote'" class="modal modal-wide">
+          <div class="modal-title">添加远程项目</div>
+          <div class="modal-subtitle">通过 SSH 连接远程服务器上的项目</div>
+
+          <!-- 连接方式：有已保存配置时提供切换 + 下拉 -->
+          <div v-if="sshConfigs.length > 0" class="field">
+            <div class="field-label">连接方式</div>
+            <label class="field-checkbox">
+              <input v-model="useSavedSshConfig" type="checkbox" @change="handleUseSavedSshConfigChange" />
+              <span>使用已保存的 SSH 配置</span>
+            </label>
+            <select
+              v-if="useSavedSshConfig"
+              v-model="selectedSshConfigId"
+              class="field-input"
+              @change="handleSshConfigSelect(selectedSshConfigId || null)"
+            >
+              <option :value="null">请选择配置</option>
+              <option v-for="config in sshConfigs" :key="config.id" :value="config.id">
+                {{ config.name }} ({{ config.user }}@{{ config.host }}{{ config.port && config.port !== 22 ? `:${config.port}` : '' }})
+              </option>
+            </select>
+          </div>
+
+          <div v-if="!useSavedSshConfig || !selectedSshConfigId" class="field-group">
+            <div class="field">
+              <div class="field-label">主机地址</div>
+              <input
+                v-model="remoteHost"
+                class="field-input"
+                type="text"
+                placeholder="192.168.1.100 或 example.com"
+              />
+            </div>
+
+            <div class="field">
+              <div class="field-label">用户名</div>
+              <input
+                v-model="remoteUser"
+                class="field-input"
+                type="text"
+                placeholder="root"
+              />
+            </div>
+
+            <div class="field">
+              <div class="field-label">端口（可选，默认 22）</div>
+              <input
+                v-model.number="remotePort"
+                class="field-input"
+                type="number"
+                placeholder="22"
+              />
+            </div>
+
+            <div class="field">
+              <div class="field-label">SSH Config Host（可选）</div>
+              <input
+                v-model="sshConfigName"
+                class="field-input"
+                type="text"
+                placeholder="如果使用 ~/.ssh/config 中的 Host 名称"
+              />
+            </div>
+
+            <div class="field">
+              <label class="field-checkbox">
+                <input v-model="saveSshConfig" type="checkbox" />
+                <span>保存此配置以便下次使用</span>
+              </label>
+              <input
+                v-if="saveSshConfig"
+                v-model="sshConfigNameInput"
+                class="field-input"
+                type="text"
+                placeholder="配置名称，如：生产服务器"
+                style="margin-top: 6px;"
+              />
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-label">远程项目路径</div>
+            <input
+              v-model="remotePath"
+              class="field-input"
+              type="text"
+              placeholder="/home/user/project 或 /var/www/app"
+            />
+          </div>
+
+          <div class="modal-actions">
+            <button class="modal-btn" type="button" @click="closeAll">取消</button>
+            <button
+              class="modal-btn primary"
+              type="button"
+              :disabled="remoteAdding"
+              @click="handleAddRemoteProject"
+            >
+              {{ remoteAdding ? '添加中...' : '添加' }}
+            </button>
+          </div>
+        </div>
+      </Transition>
+    </div>
+  </Transition>
+
   <!-- Clone 日志 -->
   <Transition name="modal">
     <div v-if="open && cloneLogOpen" class="modal-overlay" @click.self="handleCloseLog">
       <Transition name="modal-content">
-        <div class="modal modal-log">
+        <div v-if="open && cloneLogOpen" class="modal modal-log">
       <div class="modal-title">拉取日志</div>
       <div class="modal-subtitle">
         <span v-if="cloneRunning">正在拉取中，窗口可关闭，拉取会继续</span>
@@ -381,6 +660,31 @@ onBeforeUnmount(() => {
 
 .field-btn:hover {
   background: rgba(112, 125, 166, 0.26);
+}
+
+.field-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ev-c-text-2);
+}
+
+.field-checkbox input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(112, 125, 166, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(112, 125, 166, 0.1);
 }
 
 .log-box {
