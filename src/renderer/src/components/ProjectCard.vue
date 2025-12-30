@@ -1,22 +1,31 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue'
 import type { Project, IDEConfig } from '../types'
 import { FiChevronDown, FiTrash2 } from 'vue-icons-plus/fi'
 
 interface Props {
   project: Project
   ideConfigs: IDEConfig[]
+  batchMode?: boolean
+  selected?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  batchMode: false,
+  selected: false
+})
+
 const emit = defineEmits<{
-  (e: 'deleted'): void
+  (e: 'deleted', projectPath: string): void
   (e: 'opened'): void
   (e: 'updated'): void
+  (e: 'toggle-selection', projectPath: string): void
 }>()
 
 const menuOpen = ref(false)
 const dropdownRef = ref<HTMLElement | null>(null)
+const menuRef = ref<HTMLElement | null>(null)
+const menuUpward = ref(false)
 
 const getPreferredIde = (): IDEConfig => {
   const preferred = props.ideConfigs.find((x) => x.id === props.project.preferredIdeId)
@@ -26,7 +35,7 @@ const getPreferredIde = (): IDEConfig => {
 const handleOpen = async (): Promise<void> => {
   const ide = getPreferredIde()
   try {
-    const result = await window.api.openProject(props.project, ide.command)
+    const result = await window.api.openProject(props.project.path, ide.command)
     if (!result.success) {
       alert(`无法打开项目: ${result.error || '未知错误'}`)
       return
@@ -53,6 +62,49 @@ const handleChooseIde = async (ide: IDEConfig): Promise<void> => {
   }
 }
 
+// 检查菜单是否应该向上展开
+const checkMenuPosition = (): void => {
+  if (!dropdownRef.value) return
+
+  // 使用 nextTick 确保菜单已渲染
+  nextTick(() => {
+    if (!dropdownRef.value) return
+
+    const rect = dropdownRef.value.getBoundingClientRect()
+    // 估算菜单高度（每个菜单项约 40px，加上 padding）
+    const estimatedMenuHeight = props.ideConfigs.length * 40 + 20
+    const spaceBelow = window.innerHeight - rect.bottom
+    const spaceAbove = rect.top
+
+    // 如果下方空间不足，且上方空间足够，则向上展开
+    menuUpward.value = spaceBelow < estimatedMenuHeight + 8 && spaceAbove > estimatedMenuHeight + 8
+
+    // 如果菜单已渲染，再次检查实际高度
+    if (menuRef.value) {
+      const actualMenuHeight = menuRef.value.offsetHeight
+      const finalSpaceBelow = window.innerHeight - rect.bottom
+      const finalSpaceAbove = rect.top
+      menuUpward.value =
+        finalSpaceBelow < actualMenuHeight + 8 && finalSpaceAbove > actualMenuHeight + 8
+    }
+  })
+}
+
+// 打开菜单时检查位置
+const handleMenuToggle = (): void => {
+  menuOpen.value = !menuOpen.value
+  if (menuOpen.value) {
+    checkMenuPosition()
+  }
+}
+
+// 监听菜单打开状态，重新检查位置
+watch(menuOpen, (isOpen) => {
+  if (isOpen) {
+    checkMenuPosition()
+  }
+})
+
 const handleDelete = async (): Promise<void> => {
   const ok = confirm(
     `删除项目记录？\n\n${props.project.name}\n${props.project.path}\n\n（仅删除应用内记录，不会删除磁盘目录）`
@@ -64,11 +116,15 @@ const handleDelete = async (): Promise<void> => {
       alert('删除失败：未找到该记录（可能已被删除）')
       return
     }
-    emit('deleted')
+    emit('deleted', props.project.path)
   } catch (error) {
     console.error('Failed to remove project:', error)
     alert('删除失败')
   }
+}
+
+const handleToggleSelection = (): void => {
+  emit('toggle-selection', props.project.path)
 }
 
 const onDocMouseDown = (event: MouseEvent): void => {
@@ -89,25 +145,33 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="project-card" :class="{ 'menu-open': menuOpen }">
+  <div class="project-card" :class="{ 'menu-open': menuOpen, 'batch-selected': selected }">
     <div class="project-header">
+      <div v-if="batchMode" class="batch-checkbox-wrapper">
+        <input
+          type="checkbox"
+          :checked="selected"
+          @change.stop="handleToggleSelection"
+          @click.stop
+        />
+      </div>
       <div class="project-title" :title="project.name">
         {{ project.name }}
         <span class="project-path" :title="project.path">{{ project.path }}</span>
       </div>
       <div ref="dropdownRef" class="open-controls">
         <button class="open-button" type="button" @click="handleOpen">打开</button>
-        <button
-          class="open-dropdown"
-          type="button"
-          title="选择编辑器"
-          @click="menuOpen = !menuOpen"
-        >
+        <button class="open-dropdown" type="button" title="选择编辑器" @click="handleMenuToggle">
           <FiChevronDown class="chevron-icon" />
         </button>
 
         <Transition name="dropdown">
-          <div v-if="menuOpen" class="open-menu">
+          <div
+            v-if="menuOpen"
+            ref="menuRef"
+            class="open-menu"
+            :class="{ 'menu-upward': menuUpward }"
+          >
             <button
               v-for="ide in ideConfigs"
               :key="ide.id"
@@ -124,7 +188,13 @@ onBeforeUnmount(() => {
         </Transition>
       </div>
 
-      <button class="delete-button" type="button" title="删除记录" @click="handleDelete">
+      <button
+        v-if="!batchMode"
+        class="delete-button"
+        type="button"
+        title="删除记录"
+        @click="handleDelete"
+      >
         <FiTrash2 class="delete-icon" />
       </button>
     </div>
@@ -144,9 +214,11 @@ onBeforeUnmount(() => {
     0 1px 3px rgba(12, 11, 16, 0.1),
     0 0 0 0.5px rgba(112, 125, 166, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: transform, box-shadow;
-  animation: slideInUp 0.4s ease-out backwards;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+  will-change: transform;
   flex: 1 1 auto;
   min-width: 280px;
   max-width: 100%;
@@ -167,6 +239,29 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 12px;
   min-width: 0;
+}
+
+.batch-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px;
+  margin-right: 4px;
+  user-select: none;
+}
+
+.batch-checkbox-wrapper input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-02);
+  pointer-events: auto;
+  margin: 0;
+}
+
+.project-card.batch-selected {
+  background-color: rgba(112, 125, 166, 0.15);
+  border: 1px solid rgba(112, 125, 166, 0.3);
 }
 
 .project-title {
@@ -214,7 +309,8 @@ onBeforeUnmount(() => {
 .project-card:hover {
   background-color: rgba(204, 173, 157, 0.12);
   box-shadow:
-    0 4px 12px rgba(12, 11, 16, 0.15),
+    0 8px 32px -4px rgba(12, 11, 16, 0.12),
+    0 4px 16px -4px rgba(12, 11, 16, 0.08),
     0 0 0 0.5px rgba(112, 125, 166, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
   transform: translateY(-2px);
@@ -230,18 +326,6 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   opacity: 0.75;
-}
-
-.project-description {
-  flex: 1;
-  font-size: 13px;
-  color: var(--ev-c-text-3);
-  line-height: 1.5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-  opacity: 0.7;
 }
 
 .open-controls {
@@ -307,6 +391,11 @@ onBeforeUnmount(() => {
   padding: 6px;
   z-index: 400;
   backdrop-filter: blur(14px);
+}
+
+.open-menu.menu-upward {
+  top: auto;
+  bottom: calc(100% + 8px);
 }
 
 .menu-item {
@@ -393,6 +482,14 @@ onBeforeUnmount(() => {
   transform: translateY(-4px) scale(0.98);
 }
 
+.open-menu.menu-upward .dropdown-enter-from {
+  transform: translateY(8px) scale(0.95);
+}
+
+.open-menu.menu-upward .dropdown-leave-to {
+  transform: translateY(4px) scale(0.98);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .project-card {
     animation: none;
@@ -400,10 +497,6 @@ onBeforeUnmount(() => {
   }
 
   .project-card:hover {
-    transform: none;
-  }
-
-  .ide-button:hover {
     transform: none;
   }
 

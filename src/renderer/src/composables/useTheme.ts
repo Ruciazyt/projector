@@ -1,0 +1,37 @@
+import { ref, watch } from 'vue'
+
+export function useTheme() {
+  const theme = ref<'light' | 'dark'>('dark')
+
+  const applyTheme = (newTheme: 'light' | 'dark'): void => {
+    document.documentElement.setAttribute('data-theme', newTheme)
+  }
+
+  const loadTheme = async (): Promise<void> => {
+    try {
+      const loadedTheme = await window.api.getTheme()
+      theme.value = loadedTheme
+      applyTheme(loadedTheme)
+    } catch (error) {
+      console.error('Failed to load theme:', error)
+    }
+  }
+
+  const toggleTheme = async (): Promise<void> => {
+    const newTheme = theme.value === 'dark' ? 'light' : 'dark'
+    theme.value = newTheme
+    applyTheme(newTheme)
+    try {
+      await window.api.setTheme(newTheme)
+    } catch (error) {
+      console.error('Failed to save theme:', error)
+    }
+  }
+
+  return {
+    theme,
+    loadTheme,
+    toggleTheme,
+    applyTheme
+  }
+}

@@ -5,6 +5,7 @@ import {
   addProject,
   addRemoteProject,
   removeProject,
+  removeProjects,
   setProjectPreferredIde,
   updateProjectLastOpened
 } from '../projector/project-manager'
@@ -19,8 +20,9 @@ import {
   getSshConfig
 } from '../remote/ssh-config-manager'
 import { getSshConfigHostNames, getSshConfigHost } from '../remote/ssh-config-parser'
-import { testSshConnection } from '../remote/remote-project-detector'
-import type { SshConnectionInfo } from '../remote/remote-project-detector'
+import { testSshConnection, listRemoteDirectories } from '../remote/ssh-utils'
+import { scanRemoteProjects } from '../remote/remote-project-detector'
+import type { SshConnectionInfo } from '../remote/types'
 import type { Project } from '../projector/types'
 
 let registered = false
@@ -81,6 +83,10 @@ export function registerIpcHandlers(): void {
     return removeProject(path)
   })
 
+  ipcMain.handle('removeProjects', async (_, paths: string[]) => {
+    return removeProjects(paths)
+  })
+
   ipcMain.handle('setProjectPreferredIde', async (_, path: string, preferredIdeId: string) => {
     return setProjectPreferredIde(path, preferredIdeId)
   })
@@ -134,13 +140,23 @@ export function registerIpcHandlers(): void {
     return getSshConfigsSortedByLastUsed()
   })
 
-  ipcMain.handle('saveSshConfig', async (_, config: Omit<import('../remote/types').SshConnectionConfig, 'id' | 'createdAt'>) => {
-    return saveSshConfig(config)
-  })
+  ipcMain.handle(
+    'saveSshConfig',
+    async (_, config: Omit<import('../remote/types').SshConnectionConfig, 'id' | 'createdAt'>) => {
+      return saveSshConfig(config)
+    }
+  )
 
-  ipcMain.handle('updateSshConfig', async (_, id: string, updates: Partial<Omit<import('../remote/types').SshConnectionConfig, 'id' | 'createdAt'>>) => {
-    return updateSshConfig(id, updates)
-  })
+  ipcMain.handle(
+    'updateSshConfig',
+    async (
+      _,
+      id: string,
+      updates: Partial<Omit<import('../remote/types').SshConnectionConfig, 'id' | 'createdAt'>>
+    ) => {
+      return updateSshConfig(id, updates)
+    }
+  )
 
   ipcMain.handle('deleteSshConfig', async (_, id: string) => {
     return deleteSshConfig(id)
@@ -164,16 +180,33 @@ export function registerIpcHandlers(): void {
     return testSshConnection(connectionInfo)
   })
 
-  ipcMain.handle('addRemoteProject', async (_, connectionInfo: SshConnectionInfo, remotePath: string) => {
-    try {
-      return await addRemoteProject(connectionInfo, remotePath)
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '添加远程项目失败'
+  ipcMain.handle(
+    'listRemoteDirectories',
+    async (_, connectionInfo: SshConnectionInfo, remotePath: string) => {
+      return listRemoteDirectories(connectionInfo, remotePath)
+    }
+  )
+
+  ipcMain.handle(
+    'scanRemoteProjects',
+    async (event, connectionInfo: SshConnectionInfo, rootPath: string) => {
+      return scanRemoteProjects(connectionInfo, rootPath, (msg) => {
+        event.sender.send('scan-remote-log', msg)
+      })
+    }
+  )
+
+  ipcMain.handle(
+    'addRemoteProject',
+    async (_, connectionInfo: SshConnectionInfo, remotePath: string) => {
+      try {
+        return await addRemoteProject(connectionInfo, remotePath)
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : '添加远程项目失败'
+        }
       }
     }
-  })
+  )
 }
-
-

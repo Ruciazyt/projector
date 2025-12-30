@@ -51,6 +51,7 @@ export interface ProjectAPI {
     command: string
   ) => Promise<{ success: boolean; error?: string }>
   removeProject: (path: string) => Promise<boolean>
+  removeProjects: (paths: string[]) => Promise<number>
   setProjectPreferredIde: (path: string, preferredIdeId: string) => Promise<boolean>
   getRecentSidebarCollapsed: () => Promise<boolean>
   setRecentSidebarCollapsed: (collapsed: boolean) => Promise<boolean>
@@ -81,10 +82,16 @@ export interface ProjectAPI {
   testSshConnection: (
     connectionInfo: SshConnectionInfo
   ) => Promise<{ success: boolean; error?: string }>
+  listRemoteDirectories: (
+    connectionInfo: SshConnectionInfo,
+    remotePath: string
+  ) => Promise<{ cwd: string; dirs: string[] }>
   addRemoteProject: (
     connectionInfo: SshConnectionInfo,
     remotePath: string
   ) => Promise<Project | { success: false; error: string }>
+  scanRemoteProjects: (connectionInfo: SshConnectionInfo, rootPath: string) => Promise<string[]>
+  onScanRemoteLog: (cb: (msg: string) => void) => () => void
 }
 
 declare global {

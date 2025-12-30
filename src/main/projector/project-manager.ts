@@ -3,8 +3,9 @@ import { detectProject } from './project-detector'
 import { generateProjectId, generateProjectName } from './project-utils'
 import { loadProjects, saveProjects } from '../core/storage'
 import type { Project } from './types'
-import { detectRemoteProject, testSshConnection } from '../remote/remote-project-detector'
-import type { SshConnectionInfo } from '../remote/remote-project-detector'
+import { detectRemoteProject } from '../remote/remote-project-detector'
+import { testSshConnection } from '../remote/ssh-utils'
+import type { SshConnectionInfo } from '../remote/types'
 import { updateSshConfigLastUsed } from '../remote/ssh-config-manager'
 
 /**
@@ -66,6 +67,22 @@ export function removeProject(path: string): boolean {
   }
   saveProjects(nextProjects)
   return true
+}
+
+/**
+ * 批量删除项目记录
+ * @returns 成功删除的项目数量
+ */
+export function removeProjects(paths: string[]): number {
+  if (paths.length === 0) return 0
+  const projects = loadProjects()
+  const pathSet = new Set(paths)
+  const nextProjects = projects.filter((p) => !pathSet.has(p.path))
+  const removedCount = projects.length - nextProjects.length
+  if (removedCount > 0) {
+    saveProjects(nextProjects)
+  }
+  return removedCount
 }
 
 export function setProjectPreferredIde(path: string, preferredIdeId: string): boolean {

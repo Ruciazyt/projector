@@ -11,6 +11,7 @@ const api: ProjectAPI = {
   openProject: (pathOrProject: string | Project, command: string) =>
     ipcRenderer.invoke('openProject', pathOrProject, command),
   removeProject: (path: string) => ipcRenderer.invoke('removeProject', path),
+  removeProjects: (paths: string[]) => ipcRenderer.invoke('removeProjects', paths),
   setProjectPreferredIde: (path: string, preferredIdeId: string) =>
     ipcRenderer.invoke('setProjectPreferredIde', path, preferredIdeId),
   getRecentSidebarCollapsed: () => ipcRenderer.invoke('getRecentSidebarCollapsed'),
@@ -37,8 +38,17 @@ const api: ProjectAPI = {
   getSshConfigHost: (hostName) => ipcRenderer.invoke('getSshConfigHost', hostName),
   // 远程项目相关
   testSshConnection: (connectionInfo) => ipcRenderer.invoke('testSshConnection', connectionInfo),
+  listRemoteDirectories: (connectionInfo, remotePath) =>
+    ipcRenderer.invoke('listRemoteDirectories', connectionInfo, remotePath),
   addRemoteProject: (connectionInfo, remotePath) =>
-    ipcRenderer.invoke('addRemoteProject', connectionInfo, remotePath)
+    ipcRenderer.invoke('addRemoteProject', connectionInfo, remotePath),
+  scanRemoteProjects: (connectionInfo, rootPath) =>
+    ipcRenderer.invoke('scanRemoteProjects', connectionInfo, rootPath),
+  onScanRemoteLog: (cb: (msg: string) => void): (() => void) => {
+    const listener = (_: unknown, msg: string): void => cb(msg)
+    ipcRenderer.on('scan-remote-log', listener)
+    return () => ipcRenderer.off('scan-remote-log', listener)
+  }
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

@@ -1,68 +1,10 @@
-import { exec } from 'child_process'
-import { promisify } from 'util'
-import { EDITOR_CONFIG_FILES } from '../projector/constants'
-import { DEFAULT_IDE_ID, IDE_MARKER_TO_ID } from '../../shared/ide'
-import { getSshConfig } from './ssh-config-manager'
+import { SKIP_DIRECTORIES } from '../projector/constants'
+import { DEFAULT_IDE_ID } from '../../shared/ide'
 import type { ProjectDetectResult } from '../projector/types'
-
-const execAsync = promisify(exec)
-
-/**
- * SSH 连接配置
- */
-export interface SshConnectionInfo {
-  host: string
-  user: string
-  port?: number
-  sshConfigName?: string
-  savedConfigId?: string
-}
-
-function normalizeRemotePath(remotePath: string): string {
-  const p = remotePath.trim()
-  if (!p) return p
-  return p.startsWith('/') ? p : `/${p}`
-}
-
-function classifySshError(errorMessage: string): string {
-  if (errorMessage.includes('Permission denied')) return 'SSH 认证失败：权限被拒绝'
-  if (errorMessage.includes('Host key verification failed')) return 'SSH 连接失败：主机密钥验证失败'
-  if (errorMessage.includes('Connection refused')) return 'SSH 连接失败：连接被拒绝'
-  if (errorMessage.toLowerCase().includes('timed out') || errorMessage.includes('timeout')) {
-    return 'SSH 连接超时'
-  }
-  return `SSH 执行失败: ${errorMessage}`
-}
-
-/**
- * 构建 SSH 命令的 target：
- * - 优先 savedConfigId（用户保存的配置）
- * - 其次 sshConfigName（~/.ssh/config 的 Host 名称）
- * - 否则 user@host[:port]
- */
-function buildSshTarget(info: SshConnectionInfo): string {
-  if (info.savedConfigId) {
-    const saved = getSshConfig(info.savedConfigId)
-    if (saved) {
-      if (saved.sshConfigName) return saved.sshConfigName
-      const user = saved.user || info.user
-      const host = saved.host || info.host
-      const port = saved.port || info.port
-      if (port && port !== 22) return user ? `${user}@${host}:${port}` : `${host}:${port}`
-      return user ? `${user}@${host}` : host
-    }
-  }
-
-  if (info.sshConfigName) return info.sshConfigName
-
-  const portPart = info.port && info.port !== 22 ? `:${info.port}` : ''
-  return info.user ? `${info.user}@${info.host}${portPart}` : `${info.host}${portPart}`
-}
-
-function buildSshCommand(target: string, remoteCommand: string): string {
-  const escaped = remoteCommand.replace(/"/g, '\\"')
-  return `ssh -o ConnectTimeout=10 -o BatchMode=yes "${target}" "${escaped}"`
-}
+import { scanRecursively, type ScanContext, DEFAULT_SCAN_OPTIONS } from '../core/scan-common'
+import { detectProjectFromMarkers, PROJECT_MARKERS } from '../core/detector-common'
+import type { SshConnectionInfo } from './types'
+import { normalizeRemotePath, classifySshError, buildSshTarget, runSshCommand } from './ssh-utils'
 
 /**
  * 检测远程项目（不做本地文件系统判断）
@@ -77,24 +19,23 @@ export async function detectRemoteProject(
   const normalizedPath = normalizeRemotePath(remotePath)
 
   try {
-    const testDirCmd = `test -d "${normalizedPath}" && echo "dir_ok" || echo "dir_missing"`
-    const { stdout: testOut } = await execAsync(buildSshCommand(target, testDirCmd), {
-      timeout: 15000,
-      maxBuffer: 64 * 1024
-    })
-    if (!testOut.includes('dir_ok')) {
+    // 转义路径，防止特殊字符导致命令失败
+    const escapedPath = normalizedPath.replace(/'/g, "'\\''")
+
+    // 检查目录是否存在
+    const testDirCmd = `test -d '${escapedPath}' && echo "yes" || echo "no"`
+    const testOut = await runSshCommand(target, testDirCmd, 10000)
+
+    if (!testOut.trim().includes('yes')) {
       return { isProject: false, preferredIdeId: DEFAULT_IDE_ID }
     }
 
-    const markers = ['.git', ...EDITOR_CONFIG_FILES]
-    const markerChecks = markers
-      .map((m) => `test -e "${normalizedPath}/${m}" && echo "${m}" || true`)
-      .join('; ')
-    const { stdout: markerOut } = await execAsync(buildSshCommand(target, markerChecks), {
-      timeout: 15000,
-      maxBuffer: 64 * 1024
-    })
+    // 获取 markers
+    const markerChecks = PROJECT_MARKERS.map(
+      (m) => `test -e '${escapedPath}/${m}' && echo "${m}" || true`
+    ).join('; ')
 
+    const markerOut = await runSshCommand(target, markerChecks, 10000)
     const found = new Set(
       markerOut
         .split('\n')
@@ -102,42 +43,102 @@ export async function detectRemoteProject(
         .filter(Boolean)
     )
 
-    const hasGit = found.has('.git')
-    const hasEditorConfig = EDITOR_CONFIG_FILES.some((m) => found.has(m))
-    if (!hasGit && !hasEditorConfig) {
-      return { isProject: false, preferredIdeId: DEFAULT_IDE_ID }
-    }
-
-    let preferredIdeId = DEFAULT_IDE_ID
-    for (const name of found) {
-      const ideId = IDE_MARKER_TO_ID.get(name)
-      if (ideId) {
-        preferredIdeId = ideId
-        break
-      }
-    }
-
-    return { isProject: true, preferredIdeId }
+    return detectProjectFromMarkers(found)
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     throw new Error(classifySshError(msg))
   }
 }
 
-export async function testSshConnection(
-  connectionInfo: SshConnectionInfo
-): Promise<{ success: boolean; error?: string }> {
+/**
+ * 扫描远程目录下的项目（递归）
+ */
+export async function scanRemoteProjects(
+  connectionInfo: SshConnectionInfo,
+  rootPath: string,
+  onLog?: (msg: string) => void
+): Promise<string[]> {
   const target = buildSshTarget(connectionInfo)
+  const normalizedRoot = normalizeRemotePath(rootPath)
+
+  onLog?.(`正在连接 ${target}...`)
+
+  const context: ScanContext = {
+    isDirectory: async (path: string) => {
+      const normalizedPath = normalizeRemotePath(path)
+      const escapedPath = normalizedPath.replace(/'/g, "'\\''")
+      const cmd = `test -d '${escapedPath}' && echo "yes" || echo "no"`
+      try {
+        const result = await runSshCommand(target, cmd, 10000)
+        return result.trim() === 'yes'
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        onLog?.(`检查目录失败 ${path}: ${msg}`)
+        return false
+      }
+    },
+    listSubdirectories: async (path: string, skipDirectories?: readonly string[]) => {
+      const normalizedPath = normalizeRemotePath(path)
+      const escapedPath = normalizedPath.replace(/'/g, "'\\''")
+
+      // 在 shell 命令层面就过滤掉需要跳过的目录
+      let cmd = `cd '${escapedPath}' && ls -F -1 2>/dev/null | grep '/$' | sed 's|/$||'`
+
+      // 如果有需要跳过的目录，使用 grep -v 过滤
+      if (skipDirectories && skipDirectories.length > 0) {
+        // 构建 grep -v 模式，排除所有需要跳过的目录
+        const skipPattern = skipDirectories
+          .map((d) => `^${d.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+          .join('|')
+        cmd += ` | grep -vE '${skipPattern}'`
+      }
+
+      cmd += ' || true'
+
+      try {
+        onLog?.(`正在列出子目录: ${normalizedPath}`)
+        const stdout = await runSshCommand(target, cmd, 15000)
+        const dirNames = stdout
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+        // 返回完整路径
+        const subDirs = dirNames.map((dirName) => {
+          if (normalizedPath === '/') {
+            return `/${dirName}`
+          }
+          return `${normalizedPath}/${dirName}`
+        })
+        onLog?.(`找到 ${subDirs.length} 个子目录（已过滤跳过目录）`)
+        return subDirs
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        onLog?.(`列出子目录失败 ${path}: ${msg}`)
+        return []
+      }
+    },
+    detectProject: async (path: string) => {
+      try {
+        onLog?.(`正在检测项目: ${path}`)
+        return await detectRemoteProject(connectionInfo, path)
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error)
+        onLog?.(`检测项目失败 ${path}: ${msg}`)
+        // 如果检测失败，返回非项目
+        return { isProject: false, preferredIdeId: DEFAULT_IDE_ID }
+      }
+    },
+    onLog
+  }
 
   try {
-    const { stdout } = await execAsync(buildSshCommand(target, 'echo "connected"'), {
-      timeout: 10000,
-      maxBuffer: 1024
+    return await scanRecursively(context, normalizedRoot, {
+      maxDepth: DEFAULT_SCAN_OPTIONS.maxDepth,
+      skipDirectories: SKIP_DIRECTORIES
     })
-
-    return stdout.includes('connected') ? { success: true } : { success: false, error: '连接失败' }
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
-    return { success: false, error: classifySshError(msg) }
+    onLog?.(`扫描失败: ${msg}`)
+    throw new Error(classifySshError(msg))
   }
 }

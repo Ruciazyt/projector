@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import ProjectCard from './components/ProjectCard.vue'
 import AddProjectFlowModal from './components/AddProjectFlowModal.vue'
-import type { Project, IDEConfig } from './types'
-import { IDE_LIST } from '../../shared/ide'
 import {
   FiChevronLeft,
   FiExternalLink,
@@ -11,216 +9,95 @@ import {
   FiMoon,
   FiPlus,
   FiSearch,
-  FiSun
+  FiSun,
+  FiTrash2,
+  FiMoreVertical
 } from 'vue-icons-plus/fi'
+import { useTheme } from './composables/useTheme'
+import { useSidebar } from './composables/useSidebar'
+import { useProjects } from './composables/useProjects'
+import { useBatchSelection } from './composables/useBatchSelection'
+import { useProjectActions } from './composables/useProjectActions'
+import { useToolbarAnimation } from './composables/useToolbarAnimation'
+import { useMenu } from './composables/useMenu'
 
-const searchQuery = ref('')
-const scanButtonRef = ref<HTMLButtonElement | null>(null)
-const addButtonRef = ref<HTMLButtonElement | null>(null)
-const buttonBackgroundRef = ref<HTMLDivElement | null>(null)
-const activeButton = ref<'scan' | 'add' | null>(null)
+// 主题管理
+const { theme, loadTheme, toggleTheme } = useTheme()
 
-const ideConfigs: IDEConfig[] = IDE_LIST.map((x) => ({
-  id: x.id,
-  name: x.name,
-  command: x.command
-}))
+// 侧边栏管理
+const { recentSidebarCollapsed, loadRecentSidebarCollapsed } = useSidebar()
 
-const projects = ref<Project[]>([])
-const recentSidebarCollapsed = ref(false)
-const theme = ref<'light' | 'dark'>('dark')
+// 项目列表管理
+const {
+  projects,
+  searchQuery,
+  ideConfigs,
+  filteredProjects,
+  localProjects,
+  remoteProjects,
+  recentProjects,
+  loadProjects,
+  handleProjectDeleted
+} = useProjects()
 
-const addFlowOpen = ref(false)
-
-const loadRecentSidebarCollapsed = async (): Promise<void> => {
-  try {
-    recentSidebarCollapsed.value = await window.api.getRecentSidebarCollapsed()
-  } catch (error) {
-    console.error('Failed to load recent sidebar state:', error)
-  }
-}
-
-const loadTheme = async (): Promise<void> => {
-  try {
-    const loadedTheme = await window.api.getTheme()
-    theme.value = loadedTheme
-    applyTheme(loadedTheme)
-  } catch (error) {
-    console.error('Failed to load theme:', error)
-  }
-}
-
-const applyTheme = (newTheme: 'light' | 'dark'): void => {
-  document.documentElement.setAttribute('data-theme', newTheme)
-}
-
-const toggleTheme = async (): Promise<void> => {
-  const newTheme = theme.value === 'dark' ? 'light' : 'dark'
-  theme.value = newTheme
-  applyTheme(newTheme)
-  try {
-    await window.api.setTheme(newTheme)
-  } catch (error) {
-    console.error('Failed to save theme:', error)
-  }
-}
-
-watch(
-  recentSidebarCollapsed,
-  async (collapsed) => {
-    try {
-      await window.api.setRecentSidebarCollapsed(collapsed)
-    } catch (error) {
-      console.error('Failed to save recent sidebar state:', error)
-    }
-  },
-  { flush: 'post' }
+// 批量选择管理
+const {
+  batchMode,
+  selectedProjects,
+  toggleBatchMode,
+  toggleSelectAll,
+  toggleSelectAllLocal,
+  toggleSelectAllRemote,
+  toggleProjectSelection,
+  handleBatchDelete
+} = useBatchSelection(
+  () => filteredProjects.value,
+  () => localProjects.value,
+  () => remoteProjects.value,
+  projects
 )
 
-const filteredProjects = computed(() => {
-  if (!searchQuery.value.trim()) {
-    return projects.value
-  }
-  const query = searchQuery.value.toLowerCase()
-  return projects.value.filter(
-    (p) =>
-      p.name.toLowerCase().includes(query) ||
-      p.path.toLowerCase().includes(query) ||
-      p.description?.toLowerCase().includes(query)
-  )
-})
+// 项目操作
+const { addFlowOpen, handleAddProject, handleScanDirectory, handleOpenRecent } = useProjectActions(
+  ideConfigs,
+  loadProjects
+)
 
-const recentProjects = computed(() => {
-  return filteredProjects.value
-    .filter((p) => typeof p.lastOpened === 'number' && Number.isFinite(p.lastOpened))
-    .slice()
-    .sort((a, b) => (b.lastOpened ?? 0) - (a.lastOpened ?? 0))
-    .slice(0, 8)
-})
+// 工具栏动画
+const {
+  scanButtonRef,
+  addButtonRef,
+  buttonBackgroundRef,
+  handleButtonEnter,
+  handleButtonLeave,
+  handleToolbarLeave
+} = useToolbarAnimation()
 
-const handleOpenRecent = async (project: Project): Promise<void> => {
-  const preferred = ideConfigs.find((x) => x.id === project.preferredIdeId) ?? ideConfigs[0]
-  try {
-    const result = await window.api.openProject(project, preferred.command)
-    if (!result.success) {
-      alert(`无法打开项目: ${result.error || '未知错误'}`)
-      return
-    }
-    await loadProjects()
-  } catch (error) {
-    console.error('Failed to open project:', error)
-    alert('打开项目失败')
-  }
+// 菜单管理
+const { menuOpen, menuRef } = useMenu()
+
+// 分组收起状态
+const localGroupCollapsed = ref(false)
+const remoteGroupCollapsed = ref(false)
+
+// 批量删除处理（包装 handleBatchDelete）
+const handleBatchDeleteWrapper = async (): Promise<void> => {
+  await handleBatchDelete()
 }
 
-// 加载项目列表
-const loadProjects = async (): Promise<void> => {
-  try {
-    const loadedProjects = await window.api.getProjects()
-    projects.value = loadedProjects
-  } catch (error) {
-    console.error('Failed to load projects:', error)
-  }
+// 切换批量模式时关闭菜单
+const toggleBatchModeWithMenu = (): void => {
+  toggleBatchMode()
+  menuOpen.value = false
 }
 
-// 添加项目
-const handleAddProject = async (event?: Event): Promise<void> => {
-  event?.preventDefault()
-  event?.stopPropagation()
-  addFlowOpen.value = true
+// 处理项目删除（同时更新选中状态）
+const handleProjectDeletedWrapper = (projectPath: string): void => {
+  handleProjectDeleted(projectPath)
+  selectedProjects.value.delete(projectPath)
 }
 
-// 扫描目录
-const handleScanDirectory = async (event?: Event): Promise<void> => {
-  event?.preventDefault()
-  event?.stopPropagation()
-  try {
-    if (!window.api) {
-      alert('API 未初始化')
-      return
-    }
-    const selectedPath = await window.api.showOpenDialog()
-    if (!selectedPath) {
-      return
-    }
-
-    const foundProjects = await window.api.scanDirectory(selectedPath)
-    await loadProjects()
-
-    if (foundProjects.length === 0) {
-      alert('未找到项目')
-    } else {
-      alert(`找到 ${foundProjects.length} 个项目`)
-    }
-  } catch (error) {
-    console.error('Failed to scan directory:', error)
-    alert(`扫描目录失败: ${error instanceof Error ? error.message : '未知错误'}`)
-  }
-}
-
-// 移动背景到指定按钮
-const moveBackgroundToButton = (buttonType: 'scan' | 'add'): void => {
-  const button = buttonType === 'scan' ? scanButtonRef.value : addButtonRef.value
-  const background = buttonBackgroundRef.value
-  const container = button?.parentElement
-  if (!button || !background || !container) return
-
-  const buttonRect = button.getBoundingClientRect()
-  const containerRect = container.getBoundingClientRect()
-  const left = buttonRect.left - containerRect.left
-  const width = buttonRect.width
-  const height = buttonRect.height
-
-  background.style.left = `${left}px`
-  background.style.width = `${width}px`
-  background.style.height = `${height}px`
-  background.style.opacity = '1'
-  // 确保背景元素不会拦截点击
-  background.style.pointerEvents = 'none'
-
-  // 根据按钮类型设置背景色
-  if (buttonType === 'add') {
-    background.style.backgroundColor = 'var(--color-02)'
-  } else {
-    background.style.backgroundColor = 'rgba(112, 125, 166, 0.15)'
-  }
-
-  activeButton.value = buttonType
-}
-
-// 处理按钮鼠标进入
-const handleButtonEnter = (buttonType: 'scan' | 'add'): void => {
-  if (activeButton.value && activeButton.value !== buttonType) {
-    // 从另一个按钮移动过来，需要动画
-    nextTick(() => {
-      moveBackgroundToButton(buttonType)
-    })
-  } else {
-    // 直接进入，立即显示
-    moveBackgroundToButton(buttonType)
-  }
-}
-
-// 处理按钮鼠标离开
-const handleButtonLeave = (): void => {
-  // 不立即隐藏，等待移动到另一个按钮
-}
-
-// 处理工具栏鼠标离开
-const handleToolbarLeave = (event: MouseEvent): void => {
-  // 如果鼠标移动到按钮上，不隐藏背景
-  const target = event.relatedTarget as HTMLElement
-  if (target && (target.closest('.toolbar-button') || target.closest('.button-container'))) {
-    return
-  }
-  activeButton.value = null
-  const background = buttonBackgroundRef.value
-  if (background) {
-    background.style.opacity = '0'
-  }
-}
-
-// 组件挂载时加载项目
+// 组件挂载时加载数据
 onMounted(() => {
   loadProjects()
   loadRecentSidebarCollapsed()
@@ -268,6 +145,23 @@ onMounted(() => {
           <FiPlus class="button-icon" />
           <span>添加项目</span>
         </button>
+        <div ref="menuRef" class="toolbar-menu-wrapper">
+          <button
+            class="toolbar-menu-button"
+            type="button"
+            :class="{ active: menuOpen }"
+            @click="menuOpen = !menuOpen"
+          >
+            <FiMoreVertical class="menu-icon" />
+          </button>
+          <Transition name="menu-dropdown">
+            <div v-if="menuOpen" class="toolbar-menu">
+              <button class="menu-item" type="button" @click="toggleBatchModeWithMenu">
+                <span>批量操作</span>
+              </button>
+            </div>
+          </Transition>
+        </div>
       </div>
     </div>
 
@@ -315,18 +209,115 @@ onMounted(() => {
         <div v-if="filteredProjects.length === 0" class="empty-state">
           <p class="empty-text">没有找到项目</p>
         </div>
-        <TransitionGroup v-else name="project-list" tag="div" class="project-list">
-          <ProjectCard
-            v-for="(project, index) in filteredProjects"
-            :key="project.id"
-            :project="project"
-            :ide-configs="ideConfigs"
-            :style="{ animationDelay: `${index * 0.05}s` }"
-            @deleted="loadProjects()"
-            @opened="loadProjects()"
-            @updated="loadProjects()"
-          />
-        </TransitionGroup>
+        <div v-else class="project-list">
+          <!-- 批量操作工具栏 -->
+          <Transition name="batch-toolbar">
+            <div v-if="batchMode" class="batch-toolbar">
+              <div class="batch-toolbar-left">
+                <label class="batch-checkbox">
+                  <input
+                    type="checkbox"
+                    :checked="
+                      selectedProjects.size === filteredProjects.length &&
+                      filteredProjects.length > 0
+                    "
+                    @change="toggleSelectAll"
+                  />
+                  <span>全选</span>
+                </label>
+                <span class="batch-count">已选择 {{ selectedProjects.size }} 项</span>
+              </div>
+              <button class="batch-delete-button" type="button" @click="handleBatchDeleteWrapper">
+                <FiTrash2 class="batch-delete-icon" />
+                删除选中
+              </button>
+              <button class="batch-cancel-button" type="button" @click="toggleBatchModeWithMenu">
+                取消
+              </button>
+            </div>
+          </Transition>
+          <!-- 本地项目分组 -->
+          <div v-if="localProjects.length > 0" class="project-group">
+            <div class="group-header">
+              <div class="group-header-left" @click="localGroupCollapsed = !localGroupCollapsed">
+                <FiChevronLeft
+                  class="group-collapse-icon"
+                  :class="{ collapsed: localGroupCollapsed }"
+                />
+                <h2 class="group-title">本地项目</h2>
+                <span class="group-count">{{ localProjects.length }}</span>
+              </div>
+              <label v-if="batchMode" class="group-select-all" @click.stop>
+                <input
+                  type="checkbox"
+                  :checked="
+                    localProjects.every((p) => selectedProjects.has(p.path)) &&
+                    localProjects.length > 0
+                  "
+                  @change="toggleSelectAllLocal"
+                />
+                <span>全选</span>
+              </label>
+            </div>
+            <div v-show="!localGroupCollapsed" class="group-items-wrapper">
+              <TransitionGroup name="project-list" tag="div" class="group-items">
+                <ProjectCard
+                  v-for="project in localProjects"
+                  :key="project.id"
+                  :project="project"
+                  :ide-configs="ideConfigs"
+                  :batch-mode="batchMode"
+                  :selected="selectedProjects.has(project.path)"
+                  @deleted="handleProjectDeletedWrapper"
+                  @opened="loadProjects()"
+                  @updated="loadProjects()"
+                  @toggle-selection="(path) => toggleProjectSelection(path)"
+                />
+              </TransitionGroup>
+            </div>
+          </div>
+
+          <!-- 远程项目分组 -->
+          <div v-if="remoteProjects.length > 0" class="project-group">
+            <div class="group-header">
+              <div class="group-header-left" @click="remoteGroupCollapsed = !remoteGroupCollapsed">
+                <FiChevronLeft
+                  class="group-collapse-icon"
+                  :class="{ collapsed: remoteGroupCollapsed }"
+                />
+                <h2 class="group-title">远程项目</h2>
+                <span class="group-count">{{ remoteProjects.length }}</span>
+              </div>
+              <label v-if="batchMode" class="group-select-all" @click.stop>
+                <input
+                  type="checkbox"
+                  :checked="
+                    remoteProjects.every((p) => selectedProjects.has(p.path)) &&
+                    remoteProjects.length > 0
+                  "
+                  @change="toggleSelectAllRemote"
+                />
+                <span>全选</span>
+              </label>
+            </div>
+            <div v-show="!remoteGroupCollapsed" class="group-items-wrapper">
+              <TransitionGroup name="project-list" tag="div" class="group-items">
+                <ProjectCard
+                  v-for="project in remoteProjects"
+                  :key="project.id"
+                  :project="project"
+                  :ide-configs="ideConfigs"
+                  :batch-mode="batchMode"
+                  :selected="selectedProjects.has(project.path)"
+                  @deleted="handleProjectDeletedWrapper"
+                  @opened="loadProjects()"
+                  @updated="loadProjects()"
+                  @toggle-selection="(path) => toggleProjectSelection(path)"
+                />
+              </TransitionGroup>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
   </div>
@@ -530,6 +521,16 @@ onMounted(() => {
   border-bottom: 1px solid rgba(112, 125, 166, 0.12);
 }
 
+/* 亮色模式下列标题边框更柔和 */
+[data-theme='light'] .column-header {
+  border-bottom: 1px solid rgba(112, 125, 166, 0.06);
+}
+
+.recent-column.collapsed .column-header {
+  justify-content: center;
+  padding-bottom: 8px;
+}
+
 .collapse-toggle {
   border: none;
   background: rgba(112, 125, 166, 0.12);
@@ -589,6 +590,13 @@ onMounted(() => {
   justify-content: center;
   color: var(--ev-c-text-3);
   font-size: 13px;
+}
+
+.recent-column.collapsed .recent-empty {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 12px;
+  padding: 8px 0;
 }
 
 .recent-list {
@@ -658,14 +666,17 @@ onMounted(() => {
 }
 
 .recent-column.collapsed .recent-item {
-  padding: 6px;
+  padding: 8px 6px;
+  justify-content: center;
+  align-items: center;
 }
 
 .list-column {
   overflow-y: auto;
   overflow-x: hidden;
   min-width: 0;
-  padding-right: 2px;
+  padding-right: 12px;
+  margin-right: 4px;
 }
 
 .list-column::-webkit-scrollbar {
@@ -687,36 +698,355 @@ onMounted(() => {
   background: rgba(112, 125, 166, 0.42);
 }
 
+/* 亮色模式下滚动条样式调整 */
+[data-theme='light'] .list-column::-webkit-scrollbar-thumb {
+  background: rgba(112, 125, 166, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+}
+
+[data-theme='light'] .list-column::-webkit-scrollbar-thumb:hover {
+  background: rgba(112, 125, 166, 0.3);
+}
+
+[data-theme='light'] .list-column::-webkit-scrollbar-track {
+  background: rgba(112, 125, 166, 0.04);
+}
+
 .project-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
   box-sizing: border-box;
 }
 
+.batch-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: rgba(112, 125, 166, 0.1);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  gap: 16px;
+}
+
+.batch-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.batch-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  color: var(--ev-c-text-1);
+}
+
+.batch-checkbox input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-02);
+}
+
+.batch-count {
+  font-size: 14px;
+  color: var(--ev-c-text-2);
+}
+
+.batch-delete-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background-color: rgba(134, 59, 52, 0.2);
+  color: var(--ev-c-text-1);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.batch-delete-button:hover {
+  background-color: rgba(134, 59, 52, 0.35);
+  color: #ffffff;
+}
+
+.batch-delete-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.batch-cancel-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background-color: rgba(112, 125, 166, 0.14);
+  color: var(--ev-c-text-1);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.batch-cancel-button:hover {
+  background-color: rgba(112, 125, 166, 0.24);
+}
+
+/* 批量工具栏动画 */
+.batch-toolbar-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.batch-toolbar-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.batch-toolbar-enter-from {
+  opacity: 0;
+  transform: translateY(-20px) scale(0.95);
+}
+
+.batch-toolbar-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
+}
+
+.toolbar-menu-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.toolbar-menu-button {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background-color: rgba(112, 125, 166, 0.14);
+  color: var(--ev-c-text-1);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.toolbar-menu-button:hover {
+  background-color: rgba(112, 125, 166, 0.24);
+}
+
+.toolbar-menu-button.active {
+  background-color: rgba(112, 125, 166, 0.3);
+}
+
+.menu-icon {
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+}
+
+.toolbar-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 140px;
+  background: var(--color-background);
+  border: 1px solid rgba(112, 125, 166, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  padding: 4px;
+  z-index: 1000;
+}
+
+.toolbar-menu .menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ev-c-text-1);
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.toolbar-menu .menu-item:hover {
+  background: rgba(112, 125, 166, 0.2);
+}
+
+.toolbar-menu .menu-item:active {
+  background: rgba(112, 125, 166, 0.25);
+}
+
+/* 菜单下拉动画 */
+.menu-dropdown-enter-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-dropdown-leave-active {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-dropdown-enter-from {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+}
+
+.menu-dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+}
+
+.project-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(112, 125, 166, 0.15);
+  margin-bottom: 4px;
+  user-select: none;
+  transition: opacity 0.2s ease;
+}
+
+/* 亮色模式下分组标题边框更柔和 */
+[data-theme='light'] .group-header {
+  border-bottom: 1px solid rgba(112, 125, 166, 0.08);
+}
+
+.group-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  flex: 1;
+  transition: opacity 0.2s ease;
+}
+
+.group-header-left:hover {
+  opacity: 0.8;
+}
+
+.group-select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ev-c-text-2);
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.group-select-all:hover {
+  background-color: rgba(112, 125, 166, 0.1);
+  color: var(--ev-c-text-1);
+}
+
+.group-select-all input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-02);
+  margin: 0;
+}
+
+.group-collapse-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--ev-c-text-3);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.group-collapse-icon.collapsed {
+  transform: rotate(-90deg);
+}
+
+.group-title {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--ev-c-text-2);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.group-count {
+  font-size: 12px;
+  color: var(--ev-c-text-3);
+  background: rgba(112, 125, 166, 0.12);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.group-items-wrapper {
+  overflow: hidden;
+  transition:
+    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.2s ease;
+}
+
+.group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
 .project-list-enter-active {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+  will-change: opacity, transform;
 }
 
 .project-list-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+  will-change: opacity, transform;
+  position: absolute;
+  width: 100%;
 }
 
 .project-list-enter-from {
   opacity: 0;
-  transform: translateY(10px) scale(0.95);
+  transform: translateY(-8px);
 }
 
 .project-list-leave-to {
   opacity: 0;
-  transform: translateY(-10px) scale(0.95);
+  transform: translateY(-8px);
 }
 
 .project-list-move {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s ease;
+  will-change: transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
