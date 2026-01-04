@@ -25,9 +25,9 @@ export function useToolbarAnimation() {
     background.style.pointerEvents = 'none'
 
     if (buttonType === 'add') {
-      background.style.backgroundColor = 'var(--color-02)'
+      background.style.backgroundColor = 'var(--color-primary)'
     } else {
-      background.style.backgroundColor = 'rgba(112, 125, 166, 0.15)'
+      background.style.backgroundColor = 'var(--ev-c-gray-2)'
     }
 
     activeButton.value = buttonType

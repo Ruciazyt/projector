@@ -203,22 +203,18 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .project-card {
-  background-color: rgba(204, 173, 157, 0.08);
-  border-radius: 16px;
-  padding: 12px 14px;
+  background-color: var(--color-card-bg);
+  border-radius: 0;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  border: none;
-  box-shadow:
-    0 1px 3px rgba(12, 11, 16, 0.1),
-    0 0 0 0.5px rgba(112, 125, 166, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  gap: 8px;
+  border: 3px solid var(--color-card-border);
+  box-shadow: 4px 4px 0 0 var(--color-card-border);
   transition:
-    background-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-  will-change: transform;
+    background-color 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
   flex: 1 1 auto;
   min-width: 280px;
   max-width: 100%;
@@ -227,6 +223,7 @@ onBeforeUnmount(() => {
   overflow: visible;
   position: relative;
   z-index: 0;
+  cursor: default;
 }
 
 .project-card.menu-open {
@@ -254,21 +251,26 @@ onBeforeUnmount(() => {
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: var(--color-02);
+  accent-color: var(--color-primary);
   pointer-events: auto;
   margin: 0;
+  transition: transform 0.15s ease;
+}
+
+.batch-checkbox-wrapper input[type='checkbox']:active {
+  transform: scale(0.9);
 }
 
 .project-card.batch-selected {
-  background-color: rgba(112, 125, 166, 0.15);
-  border: 1px solid rgba(112, 125, 166, 0.3);
+  background-color: var(--color-card-hover);
+  border-color: var(--color-primary);
 }
 
 .project-title {
-  font-size: 18px;
-  font-weight: 650;
-  color: var(--color-03);
-  line-height: 1.3;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ev-c-text-1);
+  line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -278,26 +280,33 @@ onBeforeUnmount(() => {
 }
 
 .delete-button {
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 8px;
-  background-color: rgba(112, 125, 166, 0.14);
-  color: var(--ev-c-text-2);
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-danger);
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--color-danger);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
+  box-shadow: 2px 2px 0 0 var(--color-danger);
 }
 
 .delete-button:hover {
-  background-color: rgba(134, 59, 52, 0.22);
+  background-color: var(--color-danger);
   color: #ffffff;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 0 var(--color-danger);
 }
 
 .delete-button:active {
-  transform: scale(0.96);
+  transform: scale(0.92);
 }
 
 .delete-icon {
@@ -307,13 +316,9 @@ onBeforeUnmount(() => {
 }
 
 .project-card:hover {
-  background-color: rgba(204, 173, 157, 0.12);
-  box-shadow:
-    0 8px 32px -4px rgba(12, 11, 16, 0.12),
-    0 4px 16px -4px rgba(12, 11, 16, 0.08),
-    0 0 0 0.5px rgba(112, 125, 166, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transform: translateY(-2px);
+  background-color: var(--color-card-hover);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 0 var(--color-card-border);
 }
 
 .project-path {
@@ -325,7 +330,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  opacity: 0.75;
+  font-weight: 400;
 }
 
 .open-controls {
@@ -338,45 +343,75 @@ onBeforeUnmount(() => {
 }
 
 .open-button {
-  padding: 8px 14px;
-  border: none;
-  border-radius: 10px 0 0 10px;
-  background-color: rgba(112, 125, 166, 0.2);
+  padding: 8px 16px;
+  border: 3px solid var(--color-card-border);
+  border-radius: 0;
+  background-color: transparent;
   color: var(--ev-c-text-1);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
   line-height: 1.2;
+  box-shadow: 2px 2px 0 0 var(--color-card-border);
 }
 
 .open-button:hover {
-  background-color: var(--color-02);
+  background-color: var(--color-primary);
   color: #ffffff;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 0 var(--color-primary);
+}
+
+.open-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.open-button:active {
+  transform: scale(0.96);
 }
 
 .open-dropdown {
-  width: 34px;
-  height: 32px;
-  border: none;
-  border-radius: 0 10px 10px 0;
-  background-color: rgba(112, 125, 166, 0.16);
-  color: var(--ev-c-text-1);
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--color-card-border);
+  border-left: none;
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--ev-c-text-2);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.1s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 2px 2px 0 0 var(--color-card-border);
 }
 
 .open-dropdown:hover {
-  background-color: rgba(112, 125, 166, 0.26);
+  background-color: var(--ev-c-gray-2);
+  color: var(--ev-c-text-1);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 0 var(--color-card-border);
 }
 
 .chevron-icon {
   width: 16px;
   height: 16px;
   color: currentColor;
+  transition: transform 0.2s ease;
+}
+
+.project-card.menu-open .chevron-icon {
+  transform: rotate(180deg);
 }
 
 .open-menu {
@@ -385,12 +420,11 @@ onBeforeUnmount(() => {
   top: calc(100% + 8px);
   min-width: 180px;
   background: var(--color-background-soft);
-  border: 1px solid rgba(112, 125, 166, 0.18);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  padding: 6px;
+  border: 3px solid var(--color-card-border);
+  border-radius: 0;
+  box-shadow: 4px 4px 0 0 var(--color-card-border);
+  padding: 4px;
   z-index: 400;
-  backdrop-filter: blur(14px);
 }
 
 .open-menu.menu-upward {
@@ -403,36 +437,50 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 10px;
+  padding: 10px 12px;
   border: none;
-  border-radius: 10px;
+  border-radius: 6px;
   background: transparent;
   color: var(--ev-c-text-1);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 14px;
   text-align: left;
+  transition:
+    background-color 0.15s ease,
+    transform 0.1s ease;
 }
 
 .menu-item:hover {
-  background: rgba(112, 125, 166, 0.16);
+  background: var(--ev-c-gray-2);
+}
+
+.menu-item:active {
+  transform: scale(0.98);
+  background: var(--ev-c-gray-1);
 }
 
 .menu-check {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 4px;
   color: transparent;
-  background: rgba(112, 125, 166, 0.14);
-  font-weight: 800;
+  background: var(--ev-c-gray-2);
+  font-weight: 600;
+  font-size: 12px;
   flex-shrink: 0;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
 }
 
 .menu-check.checked {
   color: #ffffff;
-  background: rgba(112, 125, 166, 0.32);
+  background: var(--color-primary);
+  transform: scale(1.1);
 }
 
 .menu-text {
@@ -465,7 +513,7 @@ onBeforeUnmount(() => {
 
 /* 下拉菜单动画 */
 .dropdown-enter-active {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .dropdown-leave-active {
