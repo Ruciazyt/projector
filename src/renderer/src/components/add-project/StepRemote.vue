@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { SshConnectionConfig, SshConnectionInfo } from './types'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   (e: 'cancel'): void
@@ -56,12 +59,12 @@ const handleUseSavedSshConfigChange = (): void => {
   }
 }
 
-const joinPath = (base: string, part: string) => {
+const joinPath = (base: string, part: string): string => {
   if (base === '.') return part
   return base.endsWith('/') ? `${base}${part}` : `${base}/${part}`
 }
 
-const fetchRemoteDirs = async (path: string) => {
+const fetchRemoteDirs = async (path: string): Promise<void> => {
   remoteBrowserLoading.value = true
   remoteBrowserError.value = null
   try {
@@ -82,7 +85,7 @@ const fetchRemoteDirs = async (path: string) => {
   }
 }
 
-const startRemoteBrowse = async () => {
+const startRemoteBrowse = async (): Promise<void> => {
   // 简单验证
   if (useSavedSshConfig.value) {
     if (!selectedSshConfigId.value) {
@@ -94,12 +97,12 @@ const startRemoteBrowse = async () => {
   await fetchRemoteDirs(remotePath.value || '.')
 }
 
-const confirmRemotePath = () => {
+const confirmRemotePath = (): void => {
   remotePath.value = remoteBrowserPath.value
   remoteBrowsing.value = false
 }
 
-const navigateUp = () => {
+const navigateUp = (): void => {
   if (!remoteBrowserPath.value || remoteBrowserPath.value === '/') return
   fetchRemoteDirs(remoteBrowserPath.value + '/..')
 }
@@ -108,7 +111,7 @@ const getConnectionInfo = async (): Promise<SshConnectionInfo | null> => {
   if (useSavedSshConfig.value && selectedSshConfigId.value) {
     const config = sshConfigs.value.find((c) => c.id === selectedSshConfigId.value)
     if (!config) {
-      alert('选择的 SSH 配置不存在')
+      alert(t('modal.remote.alert.sshConfigNotFound'))
       return null
     }
     return {
@@ -120,11 +123,11 @@ const getConnectionInfo = async (): Promise<SshConnectionInfo | null> => {
     }
   } else {
     if (!remoteHost.value.trim()) {
-      alert('请输入主机地址')
+      alert(t('modal.remote.alert.noHost'))
       return null
     }
     if (!remoteUser.value.trim()) {
-      alert('请输入用户名')
+      alert(t('modal.remote.alert.noUser'))
       return null
     }
 
@@ -137,7 +140,7 @@ const getConnectionInfo = async (): Promise<SshConnectionInfo | null> => {
 
     if (saveSshConfig.value) {
       if (!sshConfigNameInput.value.trim()) {
-        alert('请输入配置名称')
+        alert(t('modal.remote.alert.noConfigName'))
         return null
       }
       try {
@@ -159,7 +162,7 @@ const getConnectionInfo = async (): Promise<SshConnectionInfo | null> => {
 
 const handleScanRemoteProject = async (): Promise<void> => {
   if (!remotePath.value.trim()) {
-    alert('请输入远程项目路径')
+    alert(t('modal.remote.alert.noPath'))
     return
   }
 
@@ -183,7 +186,7 @@ const handleScanRemoteProject = async (): Promise<void> => {
     const projects = await window.api.scanRemoteProjects(connectionInfo, remotePath.value.trim())
 
     if (projects.length === 0) {
-      alert('未发现任何项目')
+      alert(t('modal.remote.alert.noProjects'))
     } else {
       for (const p of projects) {
         await window.api.addRemoteProject(connectionInfo, p)
@@ -201,7 +204,7 @@ const handleScanRemoteProject = async (): Promise<void> => {
 
 const handleAddRemoteProject = async (): Promise<void> => {
   if (!remotePath.value.trim()) {
-    alert('请输入远程项目路径')
+    alert(t('modal.remote.alert.noPath'))
     return
   }
 
@@ -218,7 +221,7 @@ const handleAddRemoteProject = async (): Promise<void> => {
     const result = await window.api.addRemoteProject(connectionInfo, remotePath.value.trim())
 
     if ('success' in result && !result.success) {
-      alert(result.error || '添加远程项目失败')
+      alert(result.error || t('modal.remote.alert.addFail'))
       remoteAdding.value = false
       return
     }
@@ -226,7 +229,10 @@ const handleAddRemoteProject = async (): Promise<void> => {
     emit('added')
   } catch (error) {
     console.error('Failed to add remote project:', error)
-    alert(`添加远程项目失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    alert(
+      t('modal.remote.alert.addFail') +
+        `: ${error instanceof Error ? error.message : t('common.unknown')}`
+    )
   } finally {
     remoteAdding.value = false
   }
@@ -238,52 +244,99 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="modal modal-wide">
-    <div class="modal-title">{{ remoteBrowsing ? '选择远程目录' : '添加远程项目' }}</div>
-    <div class="modal-subtitle">
-      {{ remoteBrowsing ? '浏览并选择项目所在目录' : '通过 SSH 连接远程服务器上的项目' }}
+  <div
+    class="relative flex max-h-[calc(100vh-40px)] w-[min(720px,calc(100vw-32px))] flex-col gap-4 overflow-y-auto rounded-lg border border-card-border bg-card-bg p-6 shadow-2"
+  >
+    <div class="text-lg font-medium text-text-1">
+      {{ remoteBrowsing ? t('modal.remote.title.browse') : t('modal.remote.title.add') }}
+    </div>
+    <div class="text-xs text-text-3">
+      {{ remoteBrowsing ? t('modal.remote.subtitle.browse') : t('modal.remote.subtitle.add') }}
     </div>
 
     <!-- 扫描日志模式 -->
-    <div v-if="scanning" class="remote-browser">
-      <div class="browser-header">
-        <div class="current-path">正在扫描: {{ remotePath }}</div>
+    <div v-if="scanning" class="flex h-[400px] flex-col gap-3">
+      <div class="flex items-center gap-2.5">
+        <div
+          class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap rounded-md bg-black/20 px-3 py-2 font-mono"
+        >
+          {{ t('modal.remote.scanning', { path: remotePath }) }}
+        </div>
       </div>
-      <div ref="logContainer" class="browser-list">
-        <div v-for="(log, index) in scanLogs" :key="index" class="log-item">{{ log }}</div>
+      <div
+        ref="logContainer"
+        class="flex-1 overflow-y-auto rounded-lg border border-card-border bg-black/10 p-2"
+      >
+        <div
+          v-for="(log, index) in scanLogs"
+          :key="index"
+          class="whitespace-pre-wrap break-all px-1 py-0.5 font-mono text-xs text-text-2"
+        >
+          {{ log }}
+        </div>
       </div>
-      <div class="modal-actions">
-        <button class="modal-btn" type="button" @click="scanning = false">关闭</button>
+      <div class="mt-1 flex flex-col gap-2">
+        <button
+          class="w-full cursor-pointer rounded-md border border-card-border bg-transparent px-5 py-3 text-sm font-bold text-text-1 shadow-1 transition-all hover:border-ev-c-gray-1 hover:bg-ev-c-gray-2 hover:shadow-2 active:scale-99 active:shadow-1"
+          type="button"
+          @click="scanning = false"
+        >
+          {{ t('common.close') }}
+        </button>
       </div>
     </div>
 
     <!-- 浏览模式 -->
-    <div v-else-if="remoteBrowsing" class="remote-browser">
-      <div class="browser-header">
-        <button class="field-btn" :disabled="remoteBrowserLoading" @click="navigateUp">
-          ⬆️ 上一级
+    <div v-else-if="remoteBrowsing" class="flex h-[400px] flex-col gap-3">
+      <div class="flex items-center gap-2.5">
+        <button
+          class="shrink-0 cursor-pointer rounded-lg border-none bg-primary/10 px-3.5 py-2.5 font-bold text-text-1 hover:bg-primary/20 disabled:opacity-50"
+          :disabled="remoteBrowserLoading"
+          @click="navigateUp"
+        >
+          {{ t('modal.remote.up') }}
         </button>
-        <div class="current-path">{{ remoteBrowserPath }}</div>
+        <div
+          class="flex-1 overflow-hidden text-ellipsis whitespace-nowrap rounded-md bg-black/20 px-3 py-2 font-mono"
+        >
+          {{ remoteBrowserPath }}
+        </div>
       </div>
-      <div class="browser-list">
-        <div v-if="remoteBrowserLoading" class="browser-loading">加载中...</div>
-        <div v-else-if="remoteBrowserError" class="browser-error">{{ remoteBrowserError }}</div>
-        <div v-else-if="remoteDirs.length === 0" class="browser-empty">空目录</div>
-        <div v-else class="browser-items">
+      <div class="flex-1 overflow-y-auto rounded-lg border border-card-border bg-black/10 p-2">
+        <div v-if="remoteBrowserLoading" class="p-5 text-center text-text-3">
+          {{ t('common.loading') }}
+        </div>
+        <div v-else-if="remoteBrowserError" class="p-5 text-center text-red-400">
+          {{ remoteBrowserError }}
+        </div>
+        <div v-else-if="remoteDirs.length === 0" class="p-5 text-center text-text-3">
+          {{ t('modal.remote.emptyDir') }}
+        </div>
+        <div v-else class="flex flex-col gap-0.5">
           <div
             v-for="dir in remoteDirs"
             :key="dir"
-            class="browser-item"
+            class="flex cursor-pointer items-center gap-2 rounded px-2.5 py-1.5 hover:bg-white/10"
             @click="fetchRemoteDirs(joinPath(remoteBrowserPath, dir))"
           >
             📁 {{ dir }}
           </div>
         </div>
       </div>
-      <div class="modal-actions">
-        <button class="modal-btn" type="button" @click="remoteBrowsing = false">取消</button>
-        <button class="modal-btn primary" type="button" @click="confirmRemotePath">
-          选择此目录
+      <div class="mt-1 flex flex-col gap-2">
+        <button
+          class="w-full cursor-pointer rounded-md border border-card-border bg-transparent px-5 py-3 text-sm font-bold text-text-1 shadow-1 transition-all hover:border-ev-c-gray-1 hover:bg-ev-c-gray-2 hover:shadow-2 active:scale-99 active:shadow-1"
+          type="button"
+          @click="remoteBrowsing = false"
+        >
+          {{ t('common.cancel') }}
+        </button>
+        <button
+          class="w-full cursor-pointer rounded-md border border-card-border bg-primary px-5 py-3 text-sm font-bold text-white shadow-1 transition-all hover:bg-primary-hover hover:shadow-2 active:scale-99 active:shadow-1"
+          type="button"
+          @click="confirmRemotePath"
+        >
+          {{ t('modal.remote.selectThis') }}
         </button>
       </div>
     </div>
@@ -291,23 +344,24 @@ onMounted(() => {
     <!-- 表单模式 -->
     <div v-else>
       <!-- 连接方式：有已保存配置时提供切换 + 下拉 -->
-      <div v-if="sshConfigs.length > 0" class="field">
-        <div class="field-label">连接方式</div>
-        <label class="field-checkbox">
+      <div v-if="sshConfigs.length > 0" class="flex flex-col gap-1.5">
+        <div class="text-xs font-bold text-text-2">{{ t('modal.remote.connectionType') }}</div>
+        <label class="flex cursor-pointer items-center gap-2 text-[13px] text-text-2">
           <input
             v-model="useSavedSshConfig"
+            class="h-4 w-4 cursor-pointer"
             type="checkbox"
             @change="handleUseSavedSshConfigChange"
           />
-          <span>使用已保存的 SSH 配置</span>
+          <span>{{ t('modal.remote.useSaved') }}</span>
         </label>
         <select
           v-if="useSavedSshConfig"
           v-model="selectedSshConfigId"
-          class="field-input"
+          class="w-full rounded-lg border border-card-border bg-card-bg px-3 py-2.5 text-text-1 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-80"
           @change="handleSshConfigSelect(selectedSshConfigId || null)"
         >
-          <option :value="null">请选择配置</option>
+          <option :value="null">{{ t('modal.remote.selectConfig') }}</option>
           <option v-for="config in sshConfigs" :key="config.id" :value="config.id">
             {{ config.name }} ({{ config.user }}@{{ config.host
             }}{{ config.port && config.port !== 22 ? `:${config.port}` : '' }})
@@ -315,86 +369,108 @@ onMounted(() => {
         </select>
       </div>
 
-      <div v-if="!useSavedSshConfig || !selectedSshConfigId" class="field-group">
-        <div class="field">
-          <div class="field-label">主机地址</div>
+      <div
+        v-if="!useSavedSshConfig || !selectedSshConfigId"
+        class="mt-3 flex flex-col gap-3 rounded-lg border border-card-border bg-card-bg/50 p-3"
+      >
+        <div class="flex flex-col gap-1.5">
+          <div class="text-xs font-bold text-text-2">{{ t('modal.remote.host') }}</div>
           <input
             v-model="remoteHost"
-            class="field-input"
+            class="w-full rounded-lg border border-card-border bg-card-bg px-3 py-2.5 text-text-1 outline-none transition-colors placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-80"
             type="text"
-            placeholder="192.168.1.100 或 example.com"
+            placeholder="192.168.1.100 / example.com"
           />
         </div>
 
-        <div class="field">
-          <div class="field-label">用户名</div>
-          <input v-model="remoteUser" class="field-input" type="text" placeholder="root" />
+        <div class="flex flex-col gap-1.5">
+          <div class="text-xs font-bold text-text-2">{{ t('modal.remote.user') }}</div>
+          <input
+            v-model="remoteUser"
+            class="w-full rounded-lg border border-card-border bg-card-bg px-3 py-2.5 text-text-1 outline-none transition-colors placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-80"
+            type="text"
+            placeholder="root"
+          />
         </div>
 
-        <div class="field">
-          <div class="field-label">端口（可选，默认 22）</div>
-          <input v-model.number="remotePort" class="field-input" type="number" placeholder="22" />
+        <div class="flex flex-col gap-1.5">
+          <div class="text-xs font-bold text-text-2">{{ t('modal.remote.port') }}</div>
+          <input
+            v-model.number="remotePort"
+            class="w-full rounded-lg border border-card-border bg-card-bg px-3 py-2.5 text-text-1 outline-none transition-colors placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-80"
+            type="number"
+            placeholder="22"
+          />
         </div>
 
-        <div class="field">
-          <div class="field-label">SSH Config Host（可选）</div>
+        <div class="flex flex-col gap-1.5">
+          <div class="text-xs font-bold text-text-2">{{ t('modal.remote.sshConfigHost') }}</div>
           <input
             v-model="sshConfigName"
-            class="field-input"
+            class="w-full rounded-lg border border-card-border bg-card-bg px-3 py-2.5 text-text-1 outline-none transition-colors placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-80"
             type="text"
-            placeholder="如果使用 ~/.ssh/config 中的 Host 名称"
+            placeholder="~/.ssh/config Host"
           />
         </div>
 
-        <div class="field">
-          <label class="field-checkbox">
-            <input v-model="saveSshConfig" type="checkbox" />
-            <span>保存此配置以便下次使用</span>
+        <div class="flex flex-col gap-1.5">
+          <label class="flex cursor-pointer items-center gap-2 text-[13px] text-text-2">
+            <input v-model="saveSshConfig" class="h-4 w-4 cursor-pointer" type="checkbox" />
+            <span>{{ t('modal.remote.saveConfig') }}</span>
           </label>
           <input
             v-if="saveSshConfig"
             v-model="sshConfigNameInput"
-            class="field-input"
+            class="mt-1.5 w-full rounded-lg border border-card-border bg-card-bg px-3 py-2.5 text-text-1 outline-none transition-colors placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-80"
             type="text"
-            placeholder="配置名称，如：生产服务器"
-            style="margin-top: 6px"
+            :placeholder="t('modal.remote.configName')"
           />
         </div>
       </div>
 
-      <div class="field">
-        <div class="field-label">远程项目路径</div>
-        <div class="field-row">
+      <div class="mt-3 flex flex-col gap-1.5">
+        <div class="text-xs font-bold text-text-2">{{ t('modal.remote.remotePath') }}</div>
+        <div class="flex gap-2.5">
           <input
             v-model="remotePath"
-            class="field-input"
+            class="w-full rounded-lg border border-card-border bg-card-bg px-3 py-2.5 text-text-1 outline-none transition-colors placeholder:text-text-3 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-80"
             type="text"
-            placeholder="/home/user/project 或 /var/www/app"
+            placeholder="/home/user/project..."
           />
-          <button class="field-btn" type="button" @click="startRemoteBrowse">浏览</button>
+          <button
+            class="shrink-0 cursor-pointer rounded-lg border-none bg-primary/10 px-3.5 py-2.5 font-bold text-text-1 hover:bg-primary/20"
+            type="button"
+            @click="startRemoteBrowse"
+          >
+            {{ t('modal.remote.browse') }}
+          </button>
         </div>
       </div>
 
-      <div class="modal-actions">
-        <button class="modal-btn" type="button" @click="$emit('cancel')">取消</button>
-        <div style="display: flex; gap: 8px">
+      <div class="mt-4 flex flex-col gap-2">
+        <button
+          class="w-full cursor-pointer rounded-md border border-card-border bg-transparent px-5 py-3 text-sm font-bold text-text-1 shadow-1 transition-all hover:border-ev-c-gray-1 hover:bg-ev-c-gray-2 hover:shadow-2 active:scale-99 active:shadow-1"
+          type="button"
+          @click="$emit('cancel')"
+        >
+          {{ t('common.cancel') }}
+        </button>
+        <div class="flex gap-2">
           <button
-            class="modal-btn primary"
+            class="w-full flex-1 cursor-pointer rounded-md border border-card-border bg-primary px-5 py-3 text-sm font-bold text-white shadow-1 transition-all hover:bg-primary-hover hover:shadow-2 active:scale-99 active:shadow-1 disabled:cursor-not-allowed disabled:opacity-60"
             type="button"
             :disabled="remoteAdding || scanning"
-            style="flex: 1"
             @click="handleScanRemoteProject"
           >
-            {{ scanning ? '扫描中...' : '扫描并添加' }}
+            {{ scanning ? t('modal.remote.scanningBtn') : t('modal.remote.scanAndAdd') }}
           </button>
           <button
-            class="modal-btn primary"
+            class="w-full flex-1 cursor-pointer rounded-md border border-card-border bg-primary px-5 py-3 text-sm font-bold text-white shadow-1 transition-all hover:bg-primary-hover hover:shadow-2 active:scale-99 active:shadow-1 disabled:cursor-not-allowed disabled:opacity-60"
             type="button"
             :disabled="remoteAdding || scanning"
-            style="flex: 1"
             @click="handleAddRemoteProject"
           >
-            {{ remoteAdding ? '添加中...' : '直接添加' }}
+            {{ remoteAdding ? t('modal.remote.adding') : t('modal.remote.directAdd') }}
           </button>
         </div>
       </div>
@@ -402,110 +478,4 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
-@import './modal-styles.css';
-@import './field-styles.css';
-
-.log-item {
-  font-family: monospace;
-  font-size: 12px;
-  padding: 2px 4px;
-  color: var(--ev-c-text-2);
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.modal {
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
-}
-
-.remote-browser {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  height: 400px;
-}
-
-.browser-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.current-path {
-  flex: 1;
-  font-family: monospace;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 8px 12px;
-  border-radius: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.browser-list {
-  flex: 1;
-  border: 1px solid rgba(112, 125, 166, 0.18);
-  border-radius: 8px;
-  overflow-y: auto;
-  background: rgba(0, 0, 0, 0.1);
-  padding: 8px;
-}
-
-.browser-loading,
-.browser-error,
-.browser-empty {
-  padding: 20px;
-  text-align: center;
-  color: var(--ev-c-text-3);
-}
-
-.browser-error {
-  color: #ff6b6b;
-}
-
-.browser-items {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.browser-item {
-  padding: 6px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.browser-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.field-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--ev-c-text-2);
-}
-
-.field-checkbox input[type='checkbox'] {
-  cursor: pointer;
-  width: 16px;
-  height: 16px;
-}
-
-.field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  background: rgba(112, 125, 166, 0.05);
-  border-radius: 8px;
-  border: 1px solid rgba(112, 125, 166, 0.1);
-}
-</style>
+<style scoped></style>

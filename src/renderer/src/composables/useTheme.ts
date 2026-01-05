@@ -1,6 +1,11 @@
-import { ref, watch } from 'vue'
+import { ref, type Ref } from 'vue'
 
-export function useTheme() {
+export function useTheme(): {
+  theme: Ref<'light' | 'dark'>
+  loadTheme: () => Promise<void>
+  toggleTheme: () => Promise<void>
+  applyTheme: (newTheme: 'light' | 'dark') => void
+} {
   const theme = ref<'light' | 'dark'>('dark')
 
   const applyTheme = (newTheme: 'light' | 'dark'): void => {

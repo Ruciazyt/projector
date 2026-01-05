@@ -1,6 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-secondary: var(--color-secondary);
+  --color-accent: var(--color-accent);
+  --color-success: var(--color-success);
+  --color-danger: var(--color-danger);
+
+  --color-background: var(--color-background);
+  --color-background-soft: var(--color-background-soft);
+  --color-background-mute: var(--color-background-mute);
+
+  --color-text-1: var(--ev-c-text-1);
+  --color-text-2: var(--ev-c-text-2);
+  --color-text-3: var(--ev-c-text-3);
+
+  --color-ev-c-gray-1: var(--ev-c-gray-1);
+  --color-ev-c-gray-2: var(--ev-c-gray-2);
+  --color-ev-c-gray-3: var(--ev-c-gray-3);
+
+  --color-card-bg: var(--color-card-bg);
+  --color-card-hover: var(--color-card-hover);
+  --color-card-border: var(--color-card-border);
+
+  --shadow-card: var(--card-shadow);
+  --shadow-card-hover: var(--card-shadow-hover);
+  --shadow-1: var(--shadow-1);
+  --shadow-2: var(--shadow-2);
+
+  --radius-lg: var(--radius-lg);
+  --radius-md: var(--radius-md);
+  --radius-sm: var(--radius-sm);
+}
+
 @import './base.css';
 
-/* 全局滚动条样式 - 野兽派风格 */
+/* 全局滚动条样式 - Elegant */
 ::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -8,19 +44,20 @@
 
 ::-webkit-scrollbar-track {
   background: var(--color-background);
-  border: 3px solid var(--color-card-border);
+  border: var(--brutal-stroke) solid var(--color-card-border);
+  border-radius: var(--radius-sm);
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--color-card-bg);
-  border: 3px solid var(--color-card-border);
-  border-radius: 0;
-  box-shadow: 2px 2px 0 0 var(--color-card-border);
+  border: var(--brutal-stroke) solid var(--color-card-border);
+  border-radius: var(--radius-sm);
+  box-shadow: none;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-card-hover);
-  box-shadow: 3px 3px 0 0 var(--color-card-border);
+  box-shadow: none;
 }
 
 ::-webkit-scrollbar-corner {

@@ -1,16 +1,22 @@
-import { ref, computed } from 'vue'
+import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import type { Project, IDEConfig } from '../types'
 import { IDE_LIST } from '../../../shared/ide'
 
-export function useProjects() {
+export function useProjects(): {
+  projects: Ref<Project[]>
+  searchQuery: Ref<string>
+  ideConfigs: IDEConfig[]
+  filteredProjects: ComputedRef<Project[]>
+  localProjects: ComputedRef<Project[]>
+  remoteProjects: ComputedRef<Project[]>
+  recentProjects: ComputedRef<Project[]>
+  loadProjects: () => Promise<void>
+  handleProjectDeleted: (projectPath: string) => void
+} {
   const projects = ref<Project[]>([])
   const searchQuery = ref('')
 
-  const ideConfigs: IDEConfig[] = IDE_LIST.map((x) => ({
-    id: x.id,
-    name: x.name,
-    command: x.command
-  }))
+  const ideConfigs: IDEConfig[] = [...IDE_LIST]
 
   const filteredProjects = computed(() => {
     if (!searchQuery.value.trim()) {

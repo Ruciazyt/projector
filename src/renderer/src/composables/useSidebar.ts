@@ -1,6 +1,9 @@
-import { ref, watch } from 'vue'
+import { ref, watch, type Ref } from 'vue'
 
-export function useSidebar() {
+export function useSidebar(): {
+  recentSidebarCollapsed: Ref<boolean>
+  loadRecentSidebarCollapsed: () => Promise<void>
+} {
   const recentSidebarCollapsed = ref(false)
 
   const loadRecentSidebarCollapsed = async (): Promise<void> => {

@@ -1,56 +1,66 @@
 :root {
-  /* 新野兽派风格配色：多彩配色方案 */
-  --color-primary: #3b82f6; /* 蓝色 - 主要强调色 */
-  --color-primary-hover: #2563eb;
-  --color-secondary: #8b5cf6; /* 紫色 - 次要强调色 */
-  --color-accent: #f97316; /* 橙色 - 强调色 */
-  --color-success: #10b981; /* 绿色 - 成功色 */
-  --color-danger: #ef4444; /* 红色 - 删除/警告 */
+  /* Elegant tokens（保持变量名兼容，但视觉从“野兽派”切换为雅致风） */
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 
-  /* 背景色 - 浅色背景 */
-  --ev-c-black: #f8fafc; /* 浅灰蓝背景 */
-  --ev-c-black-soft: #ffffff; /* 卡片背景 - 白色（默认） */
-  --ev-c-black-mute: #f1f5f9; /* 悬浮背景 */
+  --stroke: 1px;
+  /* 向后兼容：之前改动使用了 --brutal-stroke */
+  --brutal-stroke: var(--stroke);
 
-  /* 文本色 - 根据背景调整 */
-  --ev-c-text-1: #0f172a; /* 主要文本 - 在浅色卡片上 */
-  --ev-c-text-2: #64748b; /* 次要文本 */
-  --ev-c-text-3: #94a3b8; /* 辅助文本 */
-  --ev-c-text-bg: #0f172a; /* 在浅色背景上的文本 */
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.08), 0 8px 24px rgba(15, 23, 42, 0.1);
+  --shadow-2: 0 2px 6px rgba(15, 23, 42, 0.1), 0 16px 40px rgba(15, 23, 42, 0.14);
+  /* 卡片阴影：比通用 shadow 更干净（避免在黑金主题下发“蓝灰脏”） */
+  --card-shadow: 0 1px 0 rgba(250, 250, 249, 0.06) inset, 0 10px 28px rgba(0, 0, 0, 0.38);
+  --card-shadow-hover: 0 1px 0 rgba(250, 250, 249, 0.08) inset, 0 14px 36px rgba(0, 0, 0, 0.48);
+  --focus-ring: 0 0 0 3px rgba(202, 138, 4, 0.35);
 
-  /* 卡片颜色 - 多彩方案 */
-  --color-card-blue: #3b82f6; /* 蓝色卡片 */
-  --color-card-purple: #8b5cf6; /* 紫色卡片 */
-  --color-card-orange: #f97316; /* 橙色卡片 */
-  --color-card-green: #10b981; /* 绿色卡片 */
-  --color-card-pink: #ec4899; /* 粉色卡片 */
-  --color-card-cyan: #06b6d4; /* 青色卡片 */
+  /* 默认使用 Elegant Dark（因为应用默认 theme='dark'） */
+  /* Black + Gold */
+  --color-primary: #ca8a04; /* gold */
+  --color-primary-hover: #a16207;
+  --color-secondary: #44403c; /* stone */
+  --color-accent: #d4af37; /* richer gold accent */
+  --color-success: #16a34a;
+  --color-danger: #ef4444;
 
-  /* 边框颜色 - 根据卡片颜色 */
-  --ev-c-gray-1: #0f172a; /* 默认边框 - 深灰 */
-  --ev-c-gray-2: #f1f5f9; /* 悬浮背景 */
-  --ev-c-gray-3: #ffffff; /* 卡片背景 */
+  /* Dark palette */
+  --ev-c-black: #0c0a09; /* near-black */
+  --ev-c-black-soft: #1c1917; /* card */
+  --ev-c-black-mute: #0f0e0d; /* muted bg */
 
-  /* 按钮样式 */
-  --ev-button-alt-border: #0f172a;
-  --ev-button-alt-text: #0f172a;
-  --ev-button-alt-bg: var(--color-primary);
-  --ev-button-alt-hover-border: #0f172a;
-  --ev-button-alt-hover-text: #ffffff;
-  --ev-button-alt-hover-bg: var(--color-primary-hover);
-}
+  --ev-c-text-1: #fafaf9;
+  --ev-c-text-2: #d6d3d1;
+  --ev-c-text-3: #a8a29e;
+  --ev-c-text-bg: #fafaf9;
 
-:root {
+  --ev-c-gray-1: rgba(250, 250, 249, 0.14); /* border */
+  --ev-c-gray-2: rgba(250, 250, 249, 0.06); /* hover fill */
+  --ev-c-gray-3: #1c1917;
+
   --color-background: var(--ev-c-black);
   --color-background-soft: var(--ev-c-black-soft);
   --color-background-mute: var(--ev-c-black-mute);
+  --color-text: var(--ev-c-text-bg);
 
-  --color-text: var(--ev-c-text-bg); /* 在浅色背景上的文本 */
-
-  /* 卡片背景 - 野兽派风格（默认白色，可通过类名改变） */
   --color-card-bg: var(--ev-c-black-soft);
-  --color-card-hover: var(--ev-c-black-mute);
+  --color-card-hover: rgba(255, 255, 255, 0.04);
   --color-card-border: var(--ev-c-gray-1);
+
+  /* 历史变量（部分组件可能会用到） */
+  --color-card-blue: #3b82f6;
+  --color-card-purple: #8b5cf6;
+  --color-card-orange: #f97316;
+  --color-card-green: #10b981;
+  --color-card-pink: #ec4899;
+  --color-card-cyan: #06b6d4;
+
+  --ev-button-alt-border: var(--color-card-border);
+  --ev-button-alt-text: var(--ev-c-text-1);
+  --ev-button-alt-bg: var(--color-primary);
+  --ev-button-alt-hover-border: var(--color-card-border);
+  --ev-button-alt-hover-text: #ffffff;
+  --ev-button-alt-hover-bg: var(--color-primary-hover);
 }
 
 *,
@@ -89,57 +99,46 @@ body {
   font-weight: 500;
 }
 
-/* 亮色主题 - 新野兽派风格（多彩配色） */
+/* 亮色主题 - Elegant */
 [data-theme='light'] {
-  /* 新野兽派风格配色 - 多彩方案 */
-  --color-primary: #3b82f6;
-  --color-primary-hover: #2563eb;
-  --color-secondary: #8b5cf6;
-  --color-accent: #f97316;
-  --color-success: #10b981;
+  /* Light palette for Black + Gold */
+  --color-primary: #ca8a04;
+  --color-primary-hover: #a16207;
+  --color-secondary: #44403c;
+  --color-accent: #d4af37;
+  --color-success: #16a34a;
   --color-danger: #ef4444;
 
-  /* 背景色 - 白色背景 */
-  --ev-c-black: #ffffff; /* 白色背景 */
-  --ev-c-black-soft: #ffffff; /* 卡片背景 - 白色（默认） */
-  --ev-c-black-mute: #f8fafc; /* 悬浮背景 */
+  --ev-c-black: #fafaf9; /* background */
+  --ev-c-black-soft: #ffffff; /* card */
+  --ev-c-black-mute: #f5f5f4; /* hover bg */
 
-  /* 文本色 - 根据背景调整 */
-  --ev-c-text-1: #0f172a; /* 主要文本 - 在浅色卡片上 */
-  --ev-c-text-2: #64748b; /* 次要文本 */
-  --ev-c-text-3: #94a3b8; /* 辅助文本 */
-  --ev-c-text-bg: #0f172a; /* 在白色背景上的文本 */
+  --ev-c-text-1: #0c0a09;
+  --ev-c-text-2: #44403c;
+  --ev-c-text-3: #78716c;
+  --ev-c-text-bg: #0c0a09;
 
-  /* 卡片颜色 - 多彩方案 */
-  --color-card-blue: #3b82f6;
-  --color-card-purple: #8b5cf6;
-  --color-card-orange: #f97316;
-  --color-card-green: #10b981;
-  --color-card-pink: #ec4899;
-  --color-card-cyan: #06b6d4;
+  --ev-c-gray-1: rgba(28, 25, 23, 0.14); /* border */
+  --ev-c-gray-2: rgba(28, 25, 23, 0.06); /* hover fill */
+  --ev-c-gray-3: #ffffff;
 
-  /* 边框颜色 */
-  --ev-c-gray-1: #0f172a; /* 默认边框 - 深灰 */
-  --ev-c-gray-2: #f8fafc; /* 悬浮背景 */
-  --ev-c-gray-3: #ffffff; /* 卡片背景 */
+  /* Light 下卡片阴影：更浅、更“空气感” */
+  --card-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 10px 28px rgba(12, 10, 9, 0.12);
+  --card-shadow-hover: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 14px 36px rgba(12, 10, 9, 0.16);
 
-  /* 按钮样式 */
-  --ev-button-alt-border: #0f172a;
-  --ev-button-alt-text: #0f172a;
-  --ev-button-alt-bg: var(--color-primary);
-  --ev-button-alt-hover-border: #0f172a;
-  --ev-button-alt-hover-text: #ffffff;
-  --ev-button-alt-hover-bg: var(--color-primary-hover);
-
-  /* 背景色 */
   --color-background: var(--ev-c-black);
   --color-background-soft: var(--ev-c-black-soft);
   --color-background-mute: var(--ev-c-black-mute);
+  --color-text: var(--ev-c-text-bg);
 
-  --color-text: var(--ev-c-text-bg); /* 在白色背景上的文本 */
-
-  /* 卡片背景 - 野兽派风格 */
   --color-card-bg: var(--ev-c-black-soft);
   --color-card-hover: var(--ev-c-black-mute);
   --color-card-border: var(--ev-c-gray-1);
+
+  --ev-button-alt-border: var(--color-card-border);
+  --ev-button-alt-text: var(--ev-c-text-1);
+  --ev-button-alt-bg: var(--color-primary);
+  --ev-button-alt-hover-border: var(--color-card-border);
+  --ev-button-alt-hover-text: #ffffff;
+  --ev-button-alt-hover-bg: var(--color-primary-hover);
 }

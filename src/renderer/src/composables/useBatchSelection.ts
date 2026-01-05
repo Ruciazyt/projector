@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import type { Project } from '../types'
 
 export function useBatchSelection(
@@ -6,7 +6,16 @@ export function useBatchSelection(
   localProjects: () => Project[],
   remoteProjects: () => Project[],
   projects: { value: Project[] }
-) {
+): {
+  batchMode: Ref<boolean>
+  selectedProjects: Ref<Set<string>>
+  toggleBatchMode: () => void
+  toggleSelectAll: () => void
+  toggleSelectAllLocal: () => void
+  toggleSelectAllRemote: () => void
+  toggleProjectSelection: (projectPath: string) => void
+  handleBatchDelete: () => Promise<number>
+} {
   const batchMode = ref(false)
   const selectedProjects = ref<Set<string>>(new Set())
 

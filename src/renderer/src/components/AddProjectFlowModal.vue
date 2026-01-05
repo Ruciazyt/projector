@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import StepChoose from './add-project/StepChoose.vue'
 import StepGithub from './add-project/StepGithub.vue'
 import StepRemote from './add-project/StepRemote.vue'
@@ -17,6 +18,8 @@ const emit = defineEmits<{
   (e: 'update:open', v: boolean): void
   (e: 'added'): void
 }>()
+
+const { t } = useI18n()
 
 const step = ref<Step>('choose')
 
@@ -53,7 +56,7 @@ const handleAddLocalProject = async (): Promise<void> => {
 
     const newProject = await window.api.addProject(selectedPath)
     if (!newProject) {
-      alert('无法添加项目：该目录不包含编辑器配置文件或 .git')
+      alert(t('modal.addProject.error.noConfig'))
       return
     }
 
@@ -61,7 +64,35 @@ const handleAddLocalProject = async (): Promise<void> => {
     closeAll()
   } catch (error) {
     console.error('Failed to add project:', error)
-    alert(`添加项目失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    alert(
+      t('modal.addProject.error.failed', {
+        error: error instanceof Error ? error.message : t('common.unknown')
+      })
+    )
+  }
+}
+
+const handleScanLocalProject = async (): Promise<void> => {
+  try {
+    const selectedPath = await window.api.showOpenDialog()
+    if (!selectedPath) return
+
+    const projects = await window.api.scanDirectory(selectedPath)
+
+    if (projects.length === 0) {
+      alert(t('modal.addProject.scan.none'))
+    } else {
+      alert(t('modal.addProject.scan.success', { count: projects.length }))
+      emit('added')
+      closeAll()
+    }
+  } catch (error) {
+    console.error('Failed to scan directory:', error)
+    alert(
+      t('modal.addProject.error.failed', {
+        error: error instanceof Error ? error.message : t('common.unknown')
+      })
+    )
   }
 }
 
@@ -83,13 +114,13 @@ const handleStartGithubClone = async (payload: {
     const result = await window.api.cloneGithubRepo(repoUrl, parentDir, requestId)
     cloneRunning.value = false
     if (!result.success || !result.repoPath) {
-      alert(result.error || '拉取失败')
+      alert(result.error || t('modal.addProject.error.cloneFailGeneric'))
       return
     }
 
     const added = await window.api.addProject(result.repoPath)
     if (!added) {
-      alert('拉取成功，但无法添加到列表（该目录不被识别为项目）')
+      alert(t('modal.addProject.error.cloneSuccessButAddFail'))
     }
 
     emit('added')
@@ -97,7 +128,11 @@ const handleStartGithubClone = async (payload: {
   } catch (error) {
     cloneRunning.value = false
     console.error('Failed to clone repo:', error)
-    alert(`拉取失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    alert(
+      t('modal.addProject.error.cloneFail', {
+        error: error instanceof Error ? error.message : t('common.unknown')
+      })
+    )
   }
 }
 
@@ -130,12 +165,28 @@ onBeforeUnmount(() => {
 
 <template>
   <!-- 选择方式 -->
-  <Transition name="modal">
-    <div v-if="open && step === 'choose'" class="modal-overlay" @click.self="closeAll">
-      <Transition name="modal-content">
+  <Transition
+    enter-active-class="transition-opacity duration-200 ease-out"
+    leave-active-class="transition-opacity duration-200 ease-out"
+    enter-from-class="opacity-0"
+    leave-to-class="opacity-0"
+  >
+    <div
+      v-if="open && step === 'choose'"
+      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/55 backdrop-blur-[10px] data-[theme=light]:bg-black/30"
+      @click.self="closeAll"
+    >
+      <Transition
+        appear
+        enter-active-class="transition-all duration-250 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        leave-active-class="transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        enter-from-class="opacity-0 -translate-y-2.5 scale-95"
+        leave-to-class="opacity-0 -translate-y-1 scale-95"
+      >
         <StepChoose
           v-if="open && step === 'choose'"
           @select-local="handleAddLocalProject"
+          @select-scan-local="handleScanLocalProject"
           @select-github="step = 'github'"
           @select-remote="step = 'remote'"
         />
@@ -144,9 +195,24 @@ onBeforeUnmount(() => {
   </Transition>
 
   <!-- GitHub 添加 -->
-  <Transition name="modal">
-    <div v-if="open && step === 'github'" class="modal-overlay" @click.self="closeAll">
-      <Transition name="modal-content">
+  <Transition
+    enter-active-class="transition-opacity duration-200 ease-out"
+    leave-active-class="transition-opacity duration-200 ease-out"
+    enter-from-class="opacity-0"
+    leave-to-class="opacity-0"
+  >
+    <div
+      v-if="open && step === 'github'"
+      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/55 backdrop-blur-[10px] data-[theme=light]:bg-black/30"
+      @click.self="closeAll"
+    >
+      <Transition
+        appear
+        enter-active-class="transition-all duration-250 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        leave-active-class="transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        enter-from-class="opacity-0 -translate-y-2.5 scale-95"
+        leave-to-class="opacity-0 -translate-y-1 scale-95"
+      >
         <StepGithub
           v-if="open && step === 'github'"
           :loading="cloneRunning"
@@ -158,9 +224,24 @@ onBeforeUnmount(() => {
   </Transition>
 
   <!-- 远程服务器添加 -->
-  <Transition name="modal">
-    <div v-if="open && step === 'remote'" class="modal-overlay" @click.self="closeAll">
-      <Transition name="modal-content">
+  <Transition
+    enter-active-class="transition-opacity duration-200 ease-out"
+    leave-active-class="transition-opacity duration-200 ease-out"
+    enter-from-class="opacity-0"
+    leave-to-class="opacity-0"
+  >
+    <div
+      v-if="open && step === 'remote'"
+      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/55 backdrop-blur-[10px] data-[theme=light]:bg-black/30"
+      @click.self="closeAll"
+    >
+      <Transition
+        appear
+        enter-active-class="transition-all duration-250 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        leave-active-class="transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        enter-from-class="opacity-0 -translate-y-2.5 scale-95"
+        leave-to-class="opacity-0 -translate-y-1 scale-95"
+      >
         <StepRemote
           v-if="open && step === 'remote'"
           @cancel="closeAll"
@@ -176,9 +257,24 @@ onBeforeUnmount(() => {
   </Transition>
 
   <!-- Clone 日志 -->
-  <Transition name="modal">
-    <div v-if="open && step === 'log'" class="modal-overlay" @click.self="handleCloseLog">
-      <Transition name="modal-content">
+  <Transition
+    enter-active-class="transition-opacity duration-200 ease-out"
+    leave-active-class="transition-opacity duration-200 ease-out"
+    enter-from-class="opacity-0"
+    leave-to-class="opacity-0"
+  >
+    <div
+      v-if="open && step === 'log'"
+      class="fixed inset-0 z-[999] flex items-center justify-center bg-black/55 backdrop-blur-[10px] data-[theme=light]:bg-black/30"
+      @click.self="handleCloseLog"
+    >
+      <Transition
+        appear
+        enter-active-class="transition-all duration-250 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        leave-active-class="transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        enter-from-class="opacity-0 -translate-y-2.5 scale-95"
+        leave-to-class="opacity-0 -translate-y-1 scale-95"
+      >
         <StepLog
           v-if="open && step === 'log'"
           :logs="cloneLogs"
@@ -191,48 +287,4 @@ onBeforeUnmount(() => {
   </Transition>
 </template>
 
-<style scoped>
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(10px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
-}
-
-[data-theme='light'] .modal-overlay {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-/* 弹框动画 */
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-content-enter-active {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.modal-content-leave-active {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.modal-content-enter-from {
-  opacity: 0;
-  transform: scale(0.95) translateY(-10px);
-}
-
-.modal-content-leave-to {
-  opacity: 0;
-  transform: scale(0.95) translateY(-5px);
-}
-</style>
+<style scoped></style>

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { CloneLogItem } from './types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   logs: CloneLogItem[]
@@ -30,7 +33,7 @@ const handleCopy = async (): Promise<void> => {
     const text = props.logs.map((x) => `[${x.stream}] ${x.line}`).join('\n')
     await navigator.clipboard.writeText(text)
   } catch {
-    alert('复制失败（可能缺少权限）')
+    alert(t('modal.log.alert.copyFail'))
   }
 }
 
@@ -44,71 +47,57 @@ const handleClose = (): void => {
 </script>
 
 <template>
-  <div class="modal modal-log">
-    <div class="modal-title">拉取日志</div>
-    <div class="modal-subtitle">
-      <span v-if="running">正在拉取中，窗口可关闭，拉取会继续</span>
-      <span v-else>拉取已结束</span>
+  <div
+    class="relative flex w-[min(860px,calc(100vw-32px))] flex-col gap-4 rounded-lg border border-card-border bg-card-bg p-6 shadow-2"
+  >
+    <div class="text-lg font-medium text-text-1">{{ t('modal.log.title') }}</div>
+    <div class="text-xs text-text-3">
+      <span v-if="running">{{ t('modal.log.subtitle.running') }}</span>
+      <span v-else>{{ t('modal.log.subtitle.finished') }}</span>
     </div>
 
-    <div ref="logScrollerRef" class="log-box">
-      <div v-if="logs.length === 0" class="log-empty">暂无输出</div>
-      <div v-for="(x, i) in logs" :key="i" class="log-line" :class="x.stream">
-        <span class="log-stream">[{{ x.stream }}]</span>
-        <span class="log-text">{{ x.line }}</span>
+    <div
+      ref="logScrollerRef"
+      class="h-[min(55vh,420px)] overflow-auto rounded-lg border border-card-border bg-background-mute p-2.5 font-mono text-xs leading-[1.45]"
+    >
+      <div v-if="logs.length === 0" class="text-text-3">{{ t('modal.log.empty') }}</div>
+      <div
+        v-for="(x, i) in logs"
+        :key="i"
+        class="flex gap-2 whitespace-pre-wrap break-words py-[2px]"
+        :class="{ 'text-danger': x.stream === 'stderr' }"
+      >
+        <span class="shrink-0 text-text-3/90">[{{ x.stream }}]</span>
+        <span class="text-text-1" :class="{ 'text-red-400': x.stream === 'stderr' }">{{
+          x.line
+        }}</span>
       </div>
     </div>
 
-    <div class="modal-actions">
-      <button class="modal-btn" type="button" @click="handleClear">清空</button>
-      <button class="modal-btn" type="button" @click="handleCopy">复制</button>
-      <button class="modal-btn primary" type="button" @click="handleClose">关闭</button>
+    <div class="mt-1 flex flex-col gap-2">
+      <button
+        class="w-full cursor-pointer rounded-md border border-card-border bg-transparent px-5 py-3 text-sm font-bold text-text-1 shadow-1 transition-all hover:border-ev-c-gray-1 hover:bg-ev-c-gray-2 hover:shadow-2 active:scale-99 active:shadow-1"
+        type="button"
+        @click="handleClear"
+      >
+        {{ t('common.clear') }}
+      </button>
+      <button
+        class="w-full cursor-pointer rounded-md border border-card-border bg-transparent px-5 py-3 text-sm font-bold text-text-1 shadow-1 transition-all hover:border-ev-c-gray-1 hover:bg-ev-c-gray-2 hover:shadow-2 active:scale-99 active:shadow-1"
+        type="button"
+        @click="handleCopy"
+      >
+        {{ t('common.copy') }}
+      </button>
+      <button
+        class="w-full cursor-pointer rounded-md border border-card-border bg-primary px-5 py-3 text-sm font-bold text-white shadow-1 transition-all hover:bg-primary-hover hover:shadow-2 active:scale-99 active:shadow-1"
+        type="button"
+        @click="handleClose"
+      >
+        {{ t('common.close') }}
+      </button>
     </div>
   </div>
 </template>
 
-<style scoped>
-@import './modal-styles.css';
-
-.modal-log {
-  width: min(860px, calc(100vw - 32px));
-}
-
-.log-box {
-  height: min(55vh, 420px);
-  overflow: auto;
-  border-radius: 10px;
-  border: 1px solid rgba(112, 125, 166, 0.18);
-  background: var(--color-background-mute);
-  padding: 10px;
-  font-family:
-    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.log-empty {
-  color: var(--ev-c-text-3);
-}
-
-.log-line {
-  display: flex;
-  gap: 8px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  padding: 2px 0;
-}
-
-.log-line.stderr .log-text {
-  color: rgba(255, 120, 120, 0.9);
-}
-
-.log-stream {
-  color: rgba(112, 125, 166, 0.9);
-  flex-shrink: 0;
-}
-
-.log-text {
-  color: var(--ev-c-text-1);
-}
-</style>
+<style scoped></style>
