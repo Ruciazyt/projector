@@ -1,5 +1,5 @@
 appId: com.electron.app
-productName: projector
+productName: Projector
 directories:
   buildResources: build
 files:
@@ -14,11 +14,15 @@ asarUnpack:
 win:
   executableName: projector
   signAndEditExecutable: false
+  icon: build/icon.ico
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:

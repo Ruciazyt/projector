@@ -112,6 +112,19 @@ export function registerIpcHandlers(): void {
     const settings = loadSettings()
     settings.theme = theme
     saveSettings(settings)
+
+    // Update titleBarOverlay for Windows
+    if (process.platform !== 'darwin') {
+      const overlay =
+        theme === 'dark'
+          ? { color: '#15141a', symbolColor: '#ffffff' }
+          : { color: '#fafaf9', symbolColor: '#000000' }
+
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.setTitleBarOverlay(overlay)
+      })
+    }
+
     return true
   })
 
@@ -188,15 +201,6 @@ export function registerIpcHandlers(): void {
   )
 
   ipcMain.handle(
-    'scanRemoteProjects',
-    async (event, connectionInfo: SshConnectionInfo, rootPath: string) => {
-      return scanRemoteProjects(connectionInfo, rootPath, (msg) => {
-        event.sender.send('scan-remote-log', msg)
-      })
-    }
-  )
-
-  ipcMain.handle(
     'addRemoteProject',
     async (_, connectionInfo: SshConnectionInfo, remotePath: string) => {
       try {
@@ -207,6 +211,16 @@ export function registerIpcHandlers(): void {
           error: error instanceof Error ? error.message : '添加远程项目失败'
         }
       }
+    }
+  )
+
+  ipcMain.handle(
+    'scanRemoteProjects',
+    async (event, connectionInfo: SshConnectionInfo, rootPath: string) => {
+      return scanRemoteProjects(connectionInfo, rootPath, (msg) => {
+        // 通过 webContents 发送日志消息
+        event.sender.send('scan-remote-log', msg)
+      })
     }
   )
 }

@@ -37,7 +37,7 @@ const {
 } = useProjects()
 
 const { recentSidebarCollapsed } = useSidebar()
-const { theme, toggleTheme } = useTheme()
+const { theme, toggleTheme, loadTheme } = useTheme()
 
 const {
   batchMode,
@@ -95,8 +95,9 @@ const handleOpenRecent = async (project: Project): Promise<void> => {
 
 const toggleSelection = (path: string): void => toggleProjectSelection(path)
 
-onMounted(() => {
+onMounted(async () => {
   loadProjects()
+  loadTheme()
 })
 </script>
 
@@ -104,11 +105,13 @@ onMounted(() => {
   <div class="flex h-screen w-full flex-col overflow-hidden bg-background text-text-1">
     <!-- Toolbar -->
     <div
-      class="relative z-20 flex items-center gap-4 border-b border-card-border bg-background/80 px-6 py-4 backdrop-blur-md"
+      class="relative z-20 flex items-center gap-4 border-b border-card-border bg-background/80 px-6 pb-4 pt-10 backdrop-blur-md"
+      style="-webkit-app-region: drag"
     >
       <!-- Add Button -->
       <button
         class="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-sm transition-all hover:bg-primary-hover hover:shadow active:scale-95"
+        style="-webkit-app-region: no-drag"
         @click="addFlowOpen = true"
       >
         <FiPlus class="text-lg" />
@@ -116,7 +119,7 @@ onMounted(() => {
       </button>
 
       <!-- Search -->
-      <div class="group relative flex-1 max-w-md">
+      <div class="group relative flex-1 max-w-md" style="-webkit-app-region: no-drag">
         <FiSearch
           class="absolute left-3 top-1/2 -translate-y-1/2 text-text-3 transition-colors group-focus-within:text-primary"
         />
@@ -133,6 +136,7 @@ onMounted(() => {
       <!-- Theme Toggle -->
       <button
         class="flex h-9 w-9 items-center justify-center rounded-lg text-text-2 transition-colors hover:bg-card-hover hover:text-text-1"
+        style="-webkit-app-region: no-drag"
         :title="t('theme.language')"
         @click="toggleLanguage"
       >
@@ -141,6 +145,7 @@ onMounted(() => {
 
       <button
         class="flex h-9 w-9 items-center justify-center rounded-lg text-text-2 transition-colors hover:bg-card-hover hover:text-text-1"
+        style="-webkit-app-region: no-drag"
         :title="t('theme.toggle')"
         @click="toggleTheme"
       >
@@ -149,7 +154,7 @@ onMounted(() => {
       </button>
 
       <!-- Menu -->
-      <MenuButton ref="menuButtonRef">
+      <MenuButton ref="menuButtonRef" style="-webkit-app-region: no-drag">
         <template #trigger>
           <button
             class="flex h-9 w-9 items-center justify-center rounded-lg text-text-2 transition-colors hover:bg-card-hover hover:text-text-1"

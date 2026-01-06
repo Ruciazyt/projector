@@ -4,8 +4,20 @@ import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  main: {},
-  preload: {},
+  main: {
+    build: {
+      rollupOptions: {
+        external: ['@electron-toolkit/utils']
+      }
+    }
+  },
+  preload: {
+    build: {
+      rollupOptions: {
+        external: ['@electron-toolkit/preload']
+      }
+    }
+  },
   renderer: {
     resolve: {
       alias: {

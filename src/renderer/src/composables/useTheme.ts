@@ -22,6 +22,9 @@ export function useTheme(): {
     }
   }
 
+  // 立即初始化主题（避免首次加载闪烁）
+  loadTheme()
+
   const toggleTheme = async (): Promise<void> => {
     const newTheme = theme.value === 'dark' ? 'light' : 'dark'
     theme.value = newTheme
